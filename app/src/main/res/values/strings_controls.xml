@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: on-screen controls (accessibility descriptions) -->
+<resources>
+    <string name="control_sprint">Sprint</string>
+    <string name="control_fire">Fire</string>
+    <string name="control_reload">Reload</string>
+    <string name="control_grenade">Grenade</string>
+</resources>

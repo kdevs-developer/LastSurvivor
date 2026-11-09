@@ -1,7 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Window-level theme. The Compose Material 3 colours (LastSurvivorTheme) read the same
+         colors.xml entries, so edit colours there and both layers stay in sync. -->
     <style name="Theme.LastSurvivor" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/night</item>
+        <item name="android:colorBackground">@color/night</item>
+        <item name="android:colorPrimary">@color/blood_red</item>
+        <item name="android:colorAccent">@color/toxic_green</item>
+        <item name="android:textColorPrimary">@color/bone</item>
+        <item name="android:statusBarColor">@color/transparent</item>
+        <item name="android:navigationBarColor">@color/transparent</item>
     </style>
 </resources>

@@ -1,3 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- App-wide strings. Module strings live in strings_menu.xml, strings_navigation.xml,
+     strings_game.xml, strings_controls.xml and strings_hud.xml. -->
 <resources>
     <string name="app_name">Last Survivor</string>
+    <string name="common_back">Back</string>
 </resources>

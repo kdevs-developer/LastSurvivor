@@ -1,12 +1,15 @@
 package com.kdevs.lastsurvivor.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.ui.game.GameScreen
 import com.kdevs.lastsurvivor.ui.menu.MainMenuScreen
 import com.kdevs.lastsurvivor.ui.menu.PlaceholderScreen
+import com.kdevs.lastsurvivor.ui.upgrades.UpgradesScreen
 
 object Routes {
     const val MENU = "menu"
@@ -32,8 +35,8 @@ fun AppNavigation() {
             )
         }
         composable(Routes.GAME) { GameScreen(onExit = back) }
-        composable(Routes.UPGRADES) { PlaceholderScreen("Weapon Upgrades", "Arrives in Phase 7.", back) }
-        composable(Routes.CHARACTER) { PlaceholderScreen("Character Selection", "Arrives in Phase 9.", back) }
-        composable(Routes.SETTINGS) { PlaceholderScreen("Settings", "Audio sliders arrive in Phase 9, persistence in Phase 10.", back) }
+        composable(Routes.UPGRADES) { UpgradesScreen(onBack = back) }
+        composable(Routes.CHARACTER) { PlaceholderScreen(stringResource(R.string.nav_character_title), stringResource(R.string.nav_character_message), back) }
+        composable(Routes.SETTINGS) { PlaceholderScreen(stringResource(R.string.nav_settings_title), stringResource(R.string.nav_settings_message), back) }
     }
 }

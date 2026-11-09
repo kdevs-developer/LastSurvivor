@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: navigation (placeholder screens for features arriving in later phases) -->
+<resources>
+    <string name="nav_character_title">Character Selection</string>
+    <string name="nav_character_message">Arrives in Phase 9.</string>
+    <string name="nav_settings_title">Settings</string>
+    <string name="nav_settings_message">Audio sliders arrive in Phase 9, persistence in Phase 10.</string>
+</resources>

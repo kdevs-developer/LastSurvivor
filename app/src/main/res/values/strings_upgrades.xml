@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: weapons and the upgrade screen (weapon names are also used by the in-game HUD) -->
+<resources>
+    <string name="upgrades_title">WEAPON UPGRADES</string>
+    <string name="upgrades_coins_format">%1$d</string>
+
+    <string name="weapon_pistol">Pistol</string>
+    <string name="weapon_smg">SMG</string>
+    <string name="weapon_shotgun">Shotgun</string>
+    <string name="weapon_rifle">Rifle</string>
+    <string name="weapon_pistol_desc">Reliable sidearm. Accurate and always yours.</string>
+    <string name="weapon_smg_desc">Sprays bullets at a very high rate. Slightly inaccurate.</string>
+    <string name="weapon_shotgun_desc">Fires 6 pellets in a cone. Devastating up close, short range.</string>
+    <string name="weapon_rifle_desc">Heavy, long-range rounds that pierce through up to 3 zombies.</string>
+
+    <string name="upgrade_damage">Damage</string>
+    <string name="upgrade_fire_rate">Fire rate</string>
+    <string name="upgrade_magazine">Magazine</string>
+    <string name="upgrade_reload">Reload speed</string>
+
+    <string name="stat_damage_format">%1$.1f</string>
+    <string name="stat_fire_rate_format">%1$.1f shots/s</string>
+    <string name="stat_magazine_format">%1$d rounds</string>
+    <string name="stat_reload_format">%1$.2f s</string>
+    <string name="upgrades_stat_change_format">%1$s  →  %2$s</string>
+
+    <string name="upgrades_level_format">Lv %1$d / %2$d</string>
+    <string name="upgrades_buy_format">UPGRADE  %1$d</string>
+    <string name="upgrades_max">MAX</string>
+    <string name="upgrades_unlock_format">UNLOCK  %1$d</string>
+    <string name="upgrades_equip">EQUIP</string>
+    <string name="upgrades_equipped">EQUIPPED</string>
+    <string name="upgrades_owned">OWNED</string>
+    <string name="upgrades_locked_format">LOCKED  %1$d</string>
+    <string name="upgrades_locked_hint">Unlock this weapon to upgrade it.</string>
+</resources>

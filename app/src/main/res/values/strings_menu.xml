@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: main menu -->
+<resources>
+    <string name="menu_title">LAST\nSURVIVOR</string>
+    <string name="menu_tagline">Survive the dead city</string>
+    <string name="menu_coins_format">%1$d</string>
+    <string name="menu_wave_format">Wave %1$d</string>
+
+    <string name="menu_play">PLAY</string>
+    <string name="menu_continue">CONTINUE</string>
+    <string name="menu_weapon_upgrades">WEAPON UPGRADES</string>
+    <string name="menu_character">CHARACTER</string>
+    <string name="menu_settings">SETTINGS</string>
+</resources>
