@@ -19,6 +19,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.res.colorResource
+import com.kdevs.lastsurvivor.R
 import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
@@ -46,6 +48,19 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
         animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
         label = "pulse"
     )
+    val skyTop = colorResource(R.color.menu_sky_top)
+    val skyMiddle = colorResource(R.color.menu_sky_middle)
+    val skyBottom = colorResource(R.color.menu_sky_bottom)
+    val moon = colorResource(R.color.menu_moon)
+    val moonGlowStart = colorResource(R.color.menu_moon_glow_start)
+    val moonGlowEnd = colorResource(R.color.menu_moon_glow_end)
+    val fogStart = colorResource(R.color.menu_fog_start)
+    val fogEnd = colorResource(R.color.menu_fog_end)
+    val buildingColor = colorResource(R.color.menu_building)
+    val groundColor = colorResource(R.color.menu_ground)
+    val vignette = colorResource(R.color.menu_vignette)
+    val zombieBody = colorResource(R.color.menu_zombie_body)
+    val zombieEye = colorResource(R.color.menu_zombie_eye)
     val buildings = remember {
         val rnd = Random(7)
         List(16) { i -> Building(i / 16f, 0.05f + rnd.nextFloat() * 0.04f, 0.18f + rnd.nextFloat() * 0.30f) }
@@ -56,17 +71,17 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
         val h = size.height
         val groundY = h * 0.86f
 
-        drawRect(Brush.verticalGradient(listOf(Color(0xFF050507), Color(0xFF2A0D10), Color(0xFF0B0B0D))))
+        drawRect(Brush.verticalGradient(listOf(skyTop, skyMiddle, skyBottom)))
 
         // blood moon
         drawCircle(
             Brush.radialGradient(
-                listOf(Color(0x66FF3B30), Color(0x00FF3B30)),
+                listOf(moonGlowStart, moonGlowEnd),
                 center = Offset(w * 0.78f, h * 0.2f), radius = h * 0.4f
             ),
             radius = h * 0.4f, center = Offset(w * 0.78f, h * 0.2f)
         )
-        drawCircle(Color(0xFF8E1B1B), radius = h * 0.09f, center = Offset(w * 0.78f, h * 0.2f))
+        drawCircle(moon, radius = h * 0.09f, center = Offset(w * 0.78f, h * 0.2f))
 
         // drifting fog
         for (k in 0 until 3) {
@@ -74,7 +89,7 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
             val fy = groundY - h * (0.05f + 0.07f * k)
             drawCircle(
                 Brush.radialGradient(
-                    listOf(Color(0x33B0B0B0), Color(0x00B0B0B0)),
+                    listOf(fogStart, fogEnd),
                     center = Offset(fx, fy), radius = h * 0.35f
                 ),
                 radius = h * 0.35f, center = Offset(fx, fy)
@@ -85,12 +100,12 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
         for (b in buildings) {
             val bh = h * b.hFrac
             drawRect(
-                Color(0xFF0E0E12),
+                buildingColor,
                 topLeft = Offset(b.xFrac * w, groundY - bh),
                 size = Size(b.wFrac * w, bh)
             )
         }
-        drawRect(Color(0xFF060608), topLeft = Offset(0f, groundY), size = Size(w, h - groundY))
+        drawRect(groundColor, topLeft = Offset(0f, groundY), size = Size(w, h - groundY))
 
         // zombies
         for (i in 0 until ZOMBIE_COUNT) {
@@ -98,21 +113,20 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
             val x = progress * (w + 240f) - 120f
             val scale = h * (0.0011f + 0.00015f * (i % 3))
             val bob = sin((t * WALK_CYCLES + i) * 2.0 * PI).toFloat()
-            drawZombie(x, groundY + (i % 3) * h * 0.02f, scale, bob)
+            drawZombie(x, groundY + (i % 3) * h * 0.02f, scale, bob, zombieBody, zombieEye)
         }
 
         // pulsing red vignette
         drawRect(
             Brush.radialGradient(
-                listOf(Color.Transparent, Color(0xFF7F0000).copy(alpha = pulse)),
+                listOf(Color.Transparent, vignette.copy(alpha = pulse)),
                 center = Offset(w / 2f, h / 2f), radius = w * 0.65f
             )
         )
     }
 }
 
-private fun DrawScope.drawZombie(x: Float, groundY: Float, s: Float, bob: Float) {
-    val body = Color(0xFF05070A)
+private fun DrawScope.drawZombie(x: Float, groundY: Float, s: Float, bob: Float, body: Color, eye: Color) {
     val bobY = bob * 3f * s * 10f
     val hip = Offset(x, groundY - 40f * s * 10f)
     val shoulder = Offset(x + 6f * s * 10f, hip.y - 38f * s * 10f + bobY)
@@ -129,5 +143,5 @@ private fun DrawScope.drawZombie(x: Float, groundY: Float, s: Float, bob: Float)
     drawLine(body, shoulder, Offset(shoulder.x + 30f * s * 10f, shoulder.y + 14f * s * 10f - bobY), 5f * s * 10f, StrokeCap.Round)
     // head + glowing eye
     drawCircle(body, 9f * s * 10f, head)
-    drawCircle(Color(0xFFFF3B30), 1.6f * s * 10f, Offset(head.x + 4f * s * 10f, head.y - 1f * s * 10f))
+    drawCircle(eye, 1.6f * s * 10f, Offset(head.x + 4f * s * 10f, head.y - 1f * s * 10f))
 }

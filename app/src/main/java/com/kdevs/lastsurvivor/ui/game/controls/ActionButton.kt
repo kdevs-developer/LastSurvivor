@@ -20,8 +20,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kdevs.lastsurvivor.R
 
 /**
  * Round on-screen button. [onPressChanged] is called with true on touch-down and false on
@@ -65,7 +67,7 @@ fun ActionButton(
         Icon(
             imageVector = icon,
             contentDescription = description,
-            tint = Color.White,
+            tint = colorResource(R.color.control_icon),
             modifier = Modifier.size(diameter * 0.5f)
         )
     }

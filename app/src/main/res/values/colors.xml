@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- ===== Base ===== -->
+    <color name="white">#FFFFFFFF</color>
+    <color name="black">#FF000000</color>
+    <color name="transparent">#00000000</color>
+
+    <!-- ===== Brand / Material theme (read by LastSurvivorTheme and themes.xml) ===== -->
+    <color name="blood_red">#FFC62828</color>
+    <color name="blood_red_dark">#FF7F1414</color>
+    <color name="toxic_green">#FF7CB342</color>
+    <color name="coin_gold">#FFFFC107</color>
+    <color name="night">#FF0B0B0D</color>
+    <color name="night_surface">#FF16161A</color>
+    <color name="bone">#FFE8E2D6</color>
+
+    <!-- ===== Menu ===== -->
+    <color name="menu_sky_top">#FF050507</color>
+    <color name="menu_sky_middle">#FF2A0D10</color>
+    <color name="menu_sky_bottom">#FF0B0B0D</color>
+    <color name="menu_moon">#FF8E1B1B</color>
+    <color name="menu_moon_glow_start">#66FF3B30</color>
+    <color name="menu_moon_glow_end">#00FF3B30</color>
+    <color name="menu_fog_start">#33B0B0B0</color>
+    <color name="menu_fog_end">#00B0B0B0</color>
+    <color name="menu_building">#FF0E0E12</color>
+    <color name="menu_ground">#FF060608</color>
+    <color name="menu_vignette">#FF7F0000</color>
+    <color name="menu_zombie_body">#FF05070A</color>
+    <color name="menu_zombie_eye">#FFFF3B30</color>
+    <color name="menu_button_container">#99000000</color>
+    <color name="menu_chip_container">#CC16161A</color>
+
+    <!-- ===== On-screen controls ===== -->
+    <color name="control_move">#FF4FC3F7</color>
+    <color name="control_aim">#FFFF7043</color>
+    <color name="control_fire">#FFE53935</color>
+    <color name="control_reload">#FFFFC107</color>
+    <color name="control_grenade">#FF7CB342</color>
+    <color name="control_sprint">#FF29B6F6</color>
+    <color name="control_icon">#FFFFFFFF</color>
+    <color name="control_joystick_base">#47000000</color>
+
+    <!-- ===== Game screen (Compose overlays) ===== -->
+    <color name="game_background">#FF000000</color>
+    <color name="game_overlay_text">#FFFFFFFF</color>
+
+    <!-- ===== World rendering ===== -->
+    <color name="world_clear">#FF0B0B0D</color>
+    <color name="world_floor_base">#FF1B1D21</color>
+    <color name="world_floor_speck">#FF202328</color>
+    <color name="world_floor_line">#FF16181B</color>
+    <color name="world_border">#FFC62828</color>
+    <color name="world_shadow">#66000000</color>
+    <color name="world_pause_dim">#88000000</color>
+
+    <!-- ===== HUD / debug overlay ===== -->
+    <color name="hud_text">#FFFFFFFF</color>
+    <color name="hud_debug_text">#FFFFC107</color>
+
+    <!-- ===== Player ===== -->
+    <color name="player_weapon">#FF2B2B2B</color>
+    <color name="player_arm">#FF3B6EA5</color>
+    <color name="player_body">#FF2F5A8A</color>
+    <color name="player_skin">#FFD9B38C</color>
+    <color name="player_hair">#FF3A2A1C</color>
+    <color name="player_aim_laser">#88FF3B30</color>
+    <color name="player_muzzle_flash">#FFFFC107</color>
+
+    <!-- ===== Zombies (index order matches ZombieType: walker, runner, tank, toxic) ===== -->
+    <color name="zombie_skin_walker">#FF7FA06A</color>
+    <color name="zombie_skin_runner">#FFB08A6A</color>
+    <color name="zombie_skin_tank">#FF6E7F8E</color>
+    <color name="zombie_skin_toxic">#FFB5E04A</color>
+    <color name="zombie_cloth_walker">#FF4A4F63</color>
+    <color name="zombie_cloth_runner">#FF7A3B3B</color>
+    <color name="zombie_cloth_tank">#FF2E3A2E</color>
+    <color name="zombie_cloth_toxic">#FF3F5F2A</color>
+    <color name="zombie_glow_toxic">#5589C93A</color>
+    <color name="zombie_wound">#FF5A1010</color>
+    <color name="zombie_eye">#FFFF3B30</color>
+    <color name="zombie_health_back">#AA000000</color>
+    <color name="zombie_health_fill">#FFE53935</color>
+
+    <!-- ===== Compose HUD (Phase 6) ===== -->
+    <color name="hud_panel">#99000000</color>
+    <color name="hud_health_good">#FF43A047</color>
+    <color name="hud_health_warn">#FFFFB300</color>
+    <color name="hud_health_low">#FFE53935</color>
+    <color name="hud_banner_text">#FFE8E2D6</color>
+    <color name="hud_banner_accent">#FFC62828</color>
+    <color name="hud_poison_text">#FF9CCC65</color>
+
+    <!-- ===== Damage feedback (Phase 6) ===== -->
+    <color name="damage_flash">#FFD32F2F</color>
+    <color name="poison_tint">#FF7CB342</color>
+    <color name="game_over_scrim">#CC000000</color>
+
+    <!-- ===== Shooting (Phase 5) ===== -->
+    <color name="bullet_tracer">#99FFE082</color>
+    <color name="bullet_core">#FFFFF8E1</color>
+    <color name="impact_blood">#FFD32F2F</color>
+    <color name="impact_dust">#FFB0BEC5</color>
+
+</resources>

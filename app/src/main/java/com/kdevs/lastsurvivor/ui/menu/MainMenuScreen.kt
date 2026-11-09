@@ -38,13 +38,14 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.kdevs.lastsurvivor.ui.theme.BloodRed
-import com.kdevs.lastsurvivor.ui.theme.CoinGold
+import com.kdevs.lastsurvivor.R
 
 @Composable
 fun MainMenuScreen(
@@ -56,6 +57,8 @@ fun MainMenuScreen(
     viewModel: MainMenuViewModel = viewModel()
 ) {
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val bloodRed = colorResource(R.color.blood_red)
+    val coinGold = colorResource(R.color.coin_gold)
 
     Box(Modifier.fillMaxSize()) {
         ZombieBackground(Modifier.fillMaxSize())
@@ -75,23 +78,23 @@ fun MainMenuScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
             ) {
                 Text(
-                    text = "LAST\nSURVIVOR",
+                    text = stringResource(R.string.menu_title),
                     style = MaterialTheme.typography.displayMedium.copy(
                         fontWeight = FontWeight.Black,
                         letterSpacing = 4.sp,
                         lineHeight = 52.sp,
-                        shadow = Shadow(BloodRed, Offset.Zero, 28f)
+                        shadow = Shadow(bloodRed, Offset.Zero, 28f)
                     ),
                     color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
-                    text = "Survive the dead city",
+                    text = stringResource(R.string.menu_tagline),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f)
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    StatChip(Icons.Filled.MonetizationOn, "${progress.coins}", CoinGold)
-                    StatChip(Icons.Filled.EmojiEvents, "Wave ${progress.highestWave}", BloodRed)
+                    StatChip(Icons.Filled.MonetizationOn, stringResource(R.string.menu_coins_format, progress.coins), coinGold)
+                    StatChip(Icons.Filled.EmojiEvents, stringResource(R.string.menu_wave_format, progress.highestWave), bloodRed)
                 }
             }
 
@@ -103,14 +106,14 @@ fun MainMenuScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                MenuButton("PLAY", Icons.Filled.PlayArrow, primary = true, onClick = onPlay)
+                MenuButton(stringResource(R.string.menu_play), Icons.Filled.PlayArrow, primary = true, onClick = onPlay)
                 MenuButton(
-                    "CONTINUE", Icons.Filled.FastForward,
+                    stringResource(R.string.menu_continue), Icons.Filled.FastForward,
                     onClick = onContinue
                 )
-                MenuButton("WEAPON UPGRADES", Icons.Filled.Build, onClick = onUpgrades)
-                MenuButton("CHARACTER", Icons.Filled.Person, onClick = onCharacter)
-                MenuButton("SETTINGS", Icons.Filled.Settings, onClick = onSettings)
+                MenuButton(stringResource(R.string.menu_weapon_upgrades), Icons.Filled.Build, onClick = onUpgrades)
+                MenuButton(stringResource(R.string.menu_character), Icons.Filled.Person, onClick = onCharacter)
+                MenuButton(stringResource(R.string.menu_settings), Icons.Filled.Settings, onClick = onSettings)
             }
         }
     }
@@ -136,7 +139,7 @@ private fun MenuButton(
             onClick = onClick,
             modifier = modifier,
             shape = RoundedCornerShape(10.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = BloodRed)
+            colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.blood_red))
         ) { content() }
     } else {
         OutlinedButton(
@@ -144,7 +147,7 @@ private fun MenuButton(
             modifier = modifier,
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.outlinedButtonColors(
-                containerColor = Color(0x99000000),
+                containerColor = colorResource(R.color.menu_button_container),
                 contentColor = MaterialTheme.colorScheme.onBackground
             )
         ) { content() }
@@ -155,7 +158,7 @@ private fun MenuButton(
 private fun StatChip(icon: ImageVector, label: String, tint: Color) {
     Surface(
         shape = RoundedCornerShape(50),
-        color = Color(0xCC16161A)
+        color = colorResource(R.color.menu_chip_container)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),

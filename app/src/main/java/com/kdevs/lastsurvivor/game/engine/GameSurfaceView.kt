@@ -5,6 +5,7 @@ import android.content.Context
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.kdevs.lastsurvivor.game.render.GameRenderer
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Bridge between the Compose UI and the engine. Compose hosts this view with AndroidView;
@@ -23,6 +24,12 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     /** Shared input state that the on-screen controls write into. */
     val input: InputState get() = world.input
 
+    /** Live HUD values (health, wave, coins, game over) for the Compose overlay. */
+    val hud: StateFlow<HudState> get() = world.hud
+
+    /** Starts a fresh run after game over. */
+    fun restart() = world.requestRestart()
+
     init {
         holder.addCallback(this)
         isFocusable = true
@@ -34,7 +41,7 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        val r = renderer ?: GameRenderer().also { renderer = it }
+        val r = renderer ?: GameRenderer(context.applicationContext).also { renderer = it }
         loop = GameLoop(holder, world, r).also {
             it.paused = paused
             it.start()

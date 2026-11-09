@@ -12,16 +12,11 @@ import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.InputState
-
-private val MoveColor = Color(0xFF4FC3F7)
-private val AimColor = Color(0xFFFF7043)
-private val FireColor = Color(0xFFE53935)
-private val ReloadColor = Color(0xFFFFC107)
-private val GrenadeColor = Color(0xFF7CB342)
-private val SprintColor = Color(0xFF29B6F6)
 
 /**
  * All on-screen controls. Sizes derive from the available height, so the layout adapts to
@@ -34,6 +29,13 @@ private val SprintColor = Color(0xFF29B6F6)
  */
 @Composable
 fun GameControls(input: InputState, modifier: Modifier = Modifier) {
+    val moveColor = colorResource(R.color.control_move)
+    val aimColor = colorResource(R.color.control_aim)
+    val fireColor = colorResource(R.color.control_fire)
+    val reloadColor = colorResource(R.color.control_reload)
+    val grenadeColor = colorResource(R.color.control_grenade)
+    val sprintColor = colorResource(R.color.control_sprint)
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
@@ -48,7 +50,7 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
         // ---- Left: movement + sprint ----
         VirtualJoystick(
             diameter = stick,
-            accent = MoveColor,
+            accent = moveColor,
             modifier = Modifier.align(Alignment.BottomStart)
         ) { x, y, _ ->
             input.moveX = x
@@ -57,9 +59,9 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
 
         ActionButton(
             icon = Icons.Filled.Speed,
-            description = "Sprint",
+            description = stringResource(R.string.control_sprint),
             diameter = small,
-            color = SprintColor,
+            color = sprintColor,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = stick * 0.1f, bottom = stick + gap)
@@ -68,7 +70,7 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
         // ---- Right: aim stick, fire, reload, grenade ----
         VirtualJoystick(
             diameter = stick,
-            accent = AimColor,
+            accent = aimColor,
             modifier = Modifier.align(Alignment.BottomEnd)
         ) { x, y, active ->
             input.aimX = x
@@ -79,9 +81,9 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
 
         ActionButton(
             icon = Icons.Filled.GpsFixed,
-            description = "Fire",
+            description = stringResource(R.string.control_fire),
             diameter = big,
-            color = FireColor,
+            color = fireColor,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = stick + gap, bottom = 4.dp)
@@ -89,9 +91,9 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
 
         ActionButton(
             icon = Icons.Filled.Autorenew,
-            description = "Reload",
+            description = stringResource(R.string.control_reload),
             diameter = small,
-            color = ReloadColor,
+            color = reloadColor,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = stick + gap + (big - small) / 2, bottom = big + gap + 4.dp)
@@ -99,9 +101,9 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
 
         ActionButton(
             icon = Icons.Filled.Whatshot,
-            description = "Grenade",
+            description = stringResource(R.string.control_grenade),
             diameter = small,
-            color = GrenadeColor,
+            color = grenadeColor,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(end = (stick - small) / 2, bottom = stick + gap)

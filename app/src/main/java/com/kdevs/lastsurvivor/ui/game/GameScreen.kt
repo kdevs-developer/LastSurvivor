@@ -24,8 +24,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.colorResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
@@ -33,8 +34,10 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.GameSurfaceView
 import com.kdevs.lastsurvivor.ui.game.controls.GameControls
+import com.kdevs.lastsurvivor.ui.game.hud.GameHud
 
 @Composable
 fun GameScreen(
@@ -45,6 +48,21 @@ fun GameScreen(
     val paused by viewModel.paused.collectAsStateWithLifecycle()
     val gameView = remember { GameSurfaceView(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
+    val hud by gameView.hud.collectAsStateWithLifecycle()
+
+    // Banks the run's coins and wave once, whether it ends by dying or by quitting.
+    val quit: () -> Unit = {
+        viewModel.saveRun(hud.wave, hud.coins)
+        onExit()
+    }
+
+    // On death: release any held controls and save the run.
+    LaunchedEffect(hud.gameOver) {
+        if (hud.gameOver) {
+            gameView.input.reset()
+            viewModel.saveRun(hud.wave, hud.coins)
+        }
+    }
 
     // Push pause state into the engine (runs only when the flag changes).
     LaunchedEffect(paused) {
@@ -62,13 +80,28 @@ fun GameScreen(
     }
 
     BackHandler {
-        if (paused) viewModel.resume() else viewModel.pause()
+        when {
+            hud.gameOver -> quit()
+            paused -> viewModel.resume()
+            else -> viewModel.pause()
+        }
     }
 
-    Box(Modifier.fillMaxSize().background(Color.Black)) {
+    Box(Modifier.fillMaxSize().background(colorResource(R.color.game_background))) {
         AndroidView(factory = { gameView }, modifier = Modifier.fillMaxSize())
 
-        if (!paused) {
+        if (hud.gameOver) {
+            GameHud(hud)
+            GameOverOverlay(
+                hud = hud,
+                onRetry = {
+                    viewModel.newRun()
+                    gameView.restart()
+                },
+                onQuit = quit
+            )
+        } else if (!paused) {
+            GameHud(hud)
             GameControls(input = gameView.input)
             IconButton(
                 onClick = viewModel::pause,
@@ -77,10 +110,14 @@ fun GameScreen(
                     .safeDrawingPadding()
                     .padding(8.dp)
             ) {
-                Icon(Icons.Filled.Pause, contentDescription = "Pause", tint = Color.White)
+                Icon(
+                    Icons.Filled.Pause,
+                    contentDescription = stringResource(R.string.game_pause_description),
+                    tint = colorResource(R.color.game_overlay_text)
+                )
             }
         } else {
-            PauseOverlay(onResume = viewModel::resume, onQuit = onExit)
+            PauseOverlay(onResume = viewModel::resume, onQuit = quit)
         }
     }
 }
@@ -95,9 +132,13 @@ private fun PauseOverlay(onResume: () -> Unit, onQuit: () -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text("PAUSED", style = MaterialTheme.typography.headlineLarge, color = Color.White)
-            Button(onClick = onResume, modifier = Modifier.width(220.dp)) { Text("Resume") }
-            OutlinedButton(onClick = onQuit, modifier = Modifier.width(220.dp)) { Text("Quit to Menu") }
+            Text(
+                stringResource(R.string.game_paused_title),
+                style = MaterialTheme.typography.headlineLarge,
+                color = colorResource(R.color.game_overlay_text)
+            )
+            Button(onClick = onResume, modifier = Modifier.width(220.dp)) { Text(stringResource(R.string.game_resume)) }
+            OutlinedButton(onClick = onQuit, modifier = Modifier.width(220.dp)) { Text(stringResource(R.string.game_quit_to_menu)) }
         }
     }
 }

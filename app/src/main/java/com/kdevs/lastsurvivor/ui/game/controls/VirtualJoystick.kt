@@ -15,8 +15,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.kdevs.lastsurvivor.R
 import kotlin.math.min
 import kotlin.math.sqrt
 
@@ -36,6 +38,7 @@ fun VirtualJoystick(
     onChange: (x: Float, y: Float, active: Boolean) -> Unit
 ) {
     val currentOnChange by rememberUpdatedState(onChange)
+    val baseColor = colorResource(R.color.control_joystick_base)
     var knob by remember { mutableStateOf(Offset.Zero) }   // normalized, length <= 1
     var active by remember { mutableStateOf(false) }
 
@@ -73,7 +76,7 @@ fun VirtualJoystick(
     ) {
         val r = this.size.minDimension / 2f
         val c = center
-        drawCircle(Color.Black.copy(alpha = 0.28f), radius = r, center = c)
+        drawCircle(baseColor, radius = r, center = c)
         drawCircle(
             accent.copy(alpha = if (active) 0.9f else 0.5f),
             radius = r, center = c, style = Stroke(3.dp.toPx())

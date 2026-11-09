@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: game screen (pause UI) -->
+<resources>
+    <string name="game_pause_description">Pause</string>
+    <string name="game_paused_title">PAUSED</string>
+    <string name="game_resume">Resume</string>
+    <string name="game_quit_to_menu">Quit to Menu</string>
+
+    <string name="game_over_title">YOU DIED</string>
+    <string name="game_over_wave_format">Reached wave %1$d</string>
+    <string name="game_over_kills_format">Zombies killed: %1$d</string>
+    <string name="game_over_coins_format">Coins earned: %1$d</string>
+    <string name="game_retry">Retry</string>
+</resources>
