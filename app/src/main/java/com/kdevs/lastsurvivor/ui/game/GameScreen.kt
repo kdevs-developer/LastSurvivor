@@ -34,6 +34,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.game.engine.GameSurfaceView
+import com.kdevs.lastsurvivor.ui.game.controls.GameControls
 
 @Composable
 fun GameScreen(
@@ -46,7 +47,10 @@ fun GameScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
 
     // Push pause state into the engine (runs only when the flag changes).
-    LaunchedEffect(paused) { gameView.setPaused(paused) }
+    LaunchedEffect(paused) {
+        gameView.setPaused(paused)
+        if (paused) gameView.input.reset() // never leave a joystick or button "stuck" across a pause
+    }
 
     // Auto-pause when the app goes to the background.
     DisposableEffect(lifecycleOwner) {
@@ -65,6 +69,7 @@ fun GameScreen(
         AndroidView(factory = { gameView }, modifier = Modifier.fillMaxSize())
 
         if (!paused) {
+            GameControls(input = gameView.input)
             IconButton(
                 onClick = viewModel::pause,
                 modifier = Modifier

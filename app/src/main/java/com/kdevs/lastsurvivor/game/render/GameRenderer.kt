@@ -33,6 +33,15 @@ class GameRenderer {
         textSize = 28f
     }
     private val pauseDim = Paint().apply { color = 0x88000000.toInt() }
+    private val aimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0x88FF3B30.toInt()
+        strokeWidth = 3f
+    }
+    private val firePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFFFFC107.toInt() }
+    private val debugPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = 0xFFFFC107.toInt()
+        textSize = 24f
+    }
 
     private val matrix = Matrix()
     private var lastFps = -1
@@ -57,6 +66,20 @@ class GameRenderer {
         matrix.postTranslate(p.x - half, p.y - half)
         canvas.drawBitmap(playerSprite, matrix, spritePaint)
 
+        // aim laser from the muzzle while the aim stick is held
+        val cosR = kotlin.math.cos(p.rotation)
+        val sinR = kotlin.math.sin(p.rotation)
+        if (p.aiming) {
+            canvas.drawLine(
+                p.x + cosR * 40f, p.y + sinR * 40f,
+                p.x + cosR * 420f, p.y + sinR * 420f, aimPaint
+            )
+        }
+        // placeholder muzzle flash while firing (real bullets arrive in Phase 5)
+        if (p.firing) {
+            canvas.drawCircle(p.x + cosR * 52f, p.y + sinR * 52f, 9f, firePaint)
+        }
+
         canvas.restore()
 
         // screen-space debug overlay
@@ -65,6 +88,14 @@ class GameRenderer {
             fpsText = "FPS $fps"
         }
         canvas.drawText(fpsText, 24f, 44f, hudPaint)
+
+        // temporary input feedback (static strings, no per-frame allocation)
+        var line = 74f
+        val pl = world.player
+        if (pl.sprinting && pl.moving) { canvas.drawText("SPRINT", 24f, line, debugPaint); line += 28f }
+        if (pl.firing) { canvas.drawText("FIRING (bullets in Phase 5)", 24f, line, debugPaint); line += 28f }
+        if (pl.reloadFlash > 0f) { canvas.drawText("RELOAD pressed (Phase 7)", 24f, line, debugPaint); line += 28f }
+        if (pl.grenadeFlash > 0f) { canvas.drawText("GRENADE pressed (Phase 5/8)", 24f, line, debugPaint) }
 
         if (paused) {
             canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), pauseDim)
