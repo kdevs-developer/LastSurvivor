@@ -64,4 +64,53 @@ object PlaceholderSprites {
         c.drawCircle(m - s * 0.01f, m, s * 0.11f, p)
         return bmp
     }
+
+    /**
+     * Top-down zombie, facing +X. frame 0/1 = alternating walk steps, frame 2 = attack lunge.
+     * glow != 0 draws a coloured aura behind the body (used by Toxic).
+     */
+    fun zombie(size: Int, skin: Int, cloth: Int, glow: Int, frame: Int): Bitmap {
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        val m = size / 2f
+        val s = size.toFloat()
+
+        if (glow != 0) {
+            p.color = glow
+            c.drawCircle(m, m, s * 0.46f, p)
+        }
+
+        val leftReach: Float
+        val rightReach: Float
+        when (frame) {
+            0 -> { leftReach = 0.36f; rightReach = 0.22f }
+            1 -> { leftReach = 0.22f; rightReach = 0.36f }
+            else -> { leftReach = 0.48f; rightReach = 0.48f }
+        }
+
+        // arms reaching forward
+        p.style = Paint.Style.STROKE
+        p.strokeCap = Paint.Cap.ROUND
+        p.strokeWidth = s * 0.09f
+        p.color = skin
+        c.drawLine(m, m - s * 0.2f, m + s * leftReach, m - s * 0.2f, p)
+        c.drawLine(m, m + s * 0.2f, m + s * rightReach, m + s * 0.2f, p)
+        p.style = Paint.Style.FILL
+
+        // torso
+        p.color = cloth
+        c.drawCircle(m - s * 0.02f, m, s * 0.24f, p)
+        // wound
+        p.color = 0xFF5A1010.toInt()
+        c.drawCircle(m - s * 0.08f, m + s * 0.08f, s * 0.06f, p)
+        // head
+        p.color = skin
+        c.drawCircle(m + s * 0.05f, m, s * 0.15f, p)
+        // eyes
+        p.color = 0xFFFF3B30.toInt()
+        c.drawCircle(m + s * 0.14f, m - s * 0.06f, s * 0.025f, p)
+        c.drawCircle(m + s * 0.14f, m + s * 0.06f, s * 0.025f, p)
+        return bmp
+    }
 }
