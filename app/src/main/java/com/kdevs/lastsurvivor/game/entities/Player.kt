@@ -24,6 +24,7 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
 
     /** Placeholder feedback timers (seconds). Phases 5-7 replace these with real reload/grenade logic. */
     var reloadFlash: Float = 0f
+    var muzzleFlash: Float = 0f // >0 right after a shot; the renderer draws the flash
     var grenadeFlash: Float = 0f
 
     override fun update(dt: Float) {
@@ -44,6 +45,7 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
         }
 
         if (reloadFlash > 0f) reloadFlash -= dt
+        if (muzzleFlash > 0f) muzzleFlash -= dt
         if (grenadeFlash > 0f) grenadeFlash -= dt
     }
 }

@@ -1,5 +1,7 @@
 package com.kdevs.lastsurvivor.game.engine
 
+import com.kdevs.lastsurvivor.game.entities.Bullet
+import com.kdevs.lastsurvivor.game.entities.ImpactEffect
 import com.kdevs.lastsurvivor.game.entities.Player
 import com.kdevs.lastsurvivor.game.entities.Zombie
 import com.kdevs.lastsurvivor.game.entities.ZombieType
@@ -28,8 +30,26 @@ class GameWorld {
     private val zombiePool = ObjectPool({ Zombie() }, initialSize = 32)
     private val spawner = ZombieSpawner(this)
 
+    /** Bullets in flight. Pooled instances. */
+    val bullets = ArrayList<Bullet>(64)
+    private val bulletPool = ObjectPool({ Bullet() }, initialSize = 48)
+
+    /** Hit puffs currently playing. Pooled instances. */
+    val impacts = ArrayList<ImpactEffect>(32)
+    private val impactPool = ObjectPool({ ImpactEffect() }, initialSize = 24)
+
+    private var fireCooldown = 0f
+
     /** Zombies that are not dead; recomputed every tick. */
     var aliveZombies: Int = 0
+        private set
+
+    /** Session stats. Phase 6 turns kills into score and coins. */
+    var shotsFired: Int = 0
+        private set
+    var shotsHit: Int = 0
+        private set
+    var kills: Int = 0
         private set
 
     /** Debug counter until Phase 6 turns swings into player damage. */
@@ -45,10 +65,16 @@ class GameWorld {
         player.x = player.x.coerceIn(player.radius, WIDTH - player.radius)
         player.y = player.y.coerceIn(player.radius, HEIGHT - player.radius)
 
+        updateShooting(dt)
+
         spawner.update(dt)
         updateZombies(dt)
         separateZombies()
         keepZombiesOutOfPlayer()
+
+        // Bullets move after zombies so they test against this tick's final zombie positions.
+        updateBullets(dt)
+        updateImpacts(dt)
         removeFinishedZombies()
 
         camera.follow(player.x, player.y, viewportWidth, viewportHeight, WIDTH, HEIGHT)
@@ -59,6 +85,95 @@ class GameWorld {
         z.reset(type, x, y)
         zombies.add(z)
         return z
+    }
+
+    /** Fires one bullet whenever fire is held and the cooldown has run out. */
+    private fun updateShooting(dt: Float) {
+        if (fireCooldown > 0f) fireCooldown -= dt
+        val p = player
+        if (!p.firing || fireCooldown > 0f) return
+        fireCooldown = GameConfig.FIRE_INTERVAL
+        p.muzzleFlash = GameConfig.MUZZLE_FLASH_SECONDS
+        shotsFired++
+
+        // Start at the player's centre: the sprite is drawn on top, so the bullet appears to
+        // leave the barrel, and no zombie touching the player can be skipped.
+        val b = bulletPool.obtain()
+        b.fire(p.x, p.y, p.rotation, GameConfig.BULLET_SPEED, GameConfig.BULLET_DAMAGE, GameConfig.BULLET_RANGE)
+        bullets.add(b)
+    }
+
+    private fun updateBullets(dt: Float) {
+        var i = 0
+        while (i < bullets.size) {
+            val b = bullets[i]
+            b.update(dt)
+            if (b.active) {
+                if (b.x < 0f || b.x > WIDTH || b.y < 0f || b.y > HEIGHT) {
+                    spawnImpact(b.x.coerceIn(0f, WIDTH), b.y.coerceIn(0f, HEIGHT), onZombie = false)
+                    b.active = false
+                } else {
+                    hitFirstZombie(b)
+                }
+            }
+            if (b.active) {
+                i++
+            } else {
+                val last = bullets.size - 1
+                bullets[i] = bullets[last]
+                bullets.removeAt(last)
+                bulletPool.release(b)
+            }
+        }
+    }
+
+    /** Applies the bullet to the first zombie its path touched this tick (no piercing yet). */
+    private fun hitFirstZombie(b: Bullet) {
+        var best: Zombie? = null
+        var bestT = 2f
+        var i = 0
+        while (i < zombies.size) {
+            val z = zombies[i]
+            i++
+            if (!z.alive) continue
+            val t = Collision.segmentHitsCircle(b.prevX, b.prevY, b.x, b.y, z.x, z.y, z.radius + b.radius)
+            if (t >= 0f && t < bestT) {
+                bestT = t
+                best = z
+            }
+        }
+        val z = best ?: return
+
+        val hitX = b.prevX + (b.x - b.prevX) * bestT
+        val hitY = b.prevY + (b.y - b.prevY) * bestT
+        shotsHit++
+        if (z.takeDamage(b.damage)) kills++
+        z.x += b.dirX * GameConfig.HIT_KNOCKBACK
+        z.y += b.dirY * GameConfig.HIT_KNOCKBACK
+        spawnImpact(hitX, hitY, onZombie = true)
+        b.active = false
+    }
+
+    private fun spawnImpact(x: Float, y: Float, onZombie: Boolean) {
+        val e = impactPool.obtain()
+        e.start(x, y, onZombie)
+        impacts.add(e)
+    }
+
+    private fun updateImpacts(dt: Float) {
+        var i = 0
+        while (i < impacts.size) {
+            val e = impacts[i]
+            e.update(dt)
+            if (e.active) {
+                i++
+            } else {
+                val last = impacts.size - 1
+                impacts[i] = impacts[last]
+                impacts.removeAt(last)
+                impactPool.release(e)
+            }
+        }
     }
 
     private fun applyInput() {
@@ -175,7 +290,7 @@ class GameWorld {
             val z = zombies[i]
             val dx = z.x - player.x
             val dy = z.y - player.y
-            if (z.alive && dx * dx + dy * dy <= r2) z.takeDamage(DEBUG_BLAST_DAMAGE)
+            if (z.alive && dx * dx + dy * dy <= r2 && z.takeDamage(DEBUG_BLAST_DAMAGE)) kills++
             i++
         }
     }

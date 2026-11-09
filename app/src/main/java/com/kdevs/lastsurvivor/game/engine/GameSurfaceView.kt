@@ -34,7 +34,7 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     }
 
     override fun surfaceCreated(holder: SurfaceHolder) {
-        val r = renderer ?: GameRenderer().also { renderer = it }
+        val r = renderer ?: GameRenderer(context.applicationContext).also { renderer = it }
         loop = GameLoop(holder, world, r).also {
             it.paused = paused
             it.start()

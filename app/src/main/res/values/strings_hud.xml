@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: in-game debug HUD drawn by GameRenderer. Replaced by the real HUD in Phase 6. -->
+<resources>
+    <string name="hud_fps">FPS %1$d</string>
+    <string name="hud_zombies_format">Zombies %1$d   Kills %2$d   Swings landed %3$d (damage in Phase 6)</string>
+    <string name="hud_shots_format">Shots %1$d   Hits %2$d   Accuracy %3$d%%</string>
+    <string name="hud_sprint">SPRINT</string>
+    <string name="hud_reload">RELOAD pressed (Phase 7)</string>
+    <string name="hud_grenade">GRENADE: temporary blast for testing (real grenades in Phase 8)</string>
+</resources>
