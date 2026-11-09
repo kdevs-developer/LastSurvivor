@@ -15,13 +15,18 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.FastForward
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.MonetizationOn
+import androidx.compose.material.icons.filled.Shield
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,8 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.HudState
 import com.kdevs.lastsurvivor.game.engine.WavePhase
+import com.kdevs.lastsurvivor.game.entities.ZombieType
 import com.kdevs.lastsurvivor.ui.weapons.nameRes
 
 /**
@@ -68,6 +75,21 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Chip(Icons.Filled.GpsFixed, stringResource(R.string.hud_kills_format, hud.kills), colorResource(R.color.hud_banner_accent))
                 Chip(Icons.Filled.MonetizationOn, stringResource(R.string.hud_coins_format, hud.coins), colorResource(R.color.coin_gold))
+                Chip(Icons.Filled.Whatshot, stringResource(R.string.hud_grenades_format, hud.grenades), colorResource(R.color.grenade_flash))
+            }
+            // Active power-up buffs with seconds left
+            if (hud.rapidFireSeconds > 0 || hud.damageBoostSeconds > 0 || hud.shieldSeconds > 0) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (hud.rapidFireSeconds > 0) {
+                        Chip(Icons.Filled.FastForward, stringResource(R.string.hud_buff_seconds_format, hud.rapidFireSeconds), colorResource(R.color.powerup_rapid))
+                    }
+                    if (hud.damageBoostSeconds > 0) {
+                        Chip(Icons.Filled.LocalFireDepartment, stringResource(R.string.hud_buff_seconds_format, hud.damageBoostSeconds), colorResource(R.color.powerup_damage))
+                    }
+                    if (hud.shieldSeconds > 0) {
+                        Chip(Icons.Filled.Shield, stringResource(R.string.hud_buff_seconds_format, hud.shieldSeconds), colorResource(R.color.powerup_shield))
+                    }
+                }
             }
         }
 
@@ -89,6 +111,9 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+            if (hud.boss != null) {
+                BossBar(hud.boss, hud.bossPercent)
+            }
         }
 
         // Bottom-centre: equipped weapon, ammo and reload state
@@ -97,6 +122,41 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
         // Centre: banner while waiting for the next wave
         if (hud.phase == WavePhase.COUNTDOWN) {
             WaveBanner(hud, Modifier.align(Alignment.Center))
+        }
+    }
+}
+
+@StringRes
+private fun ZombieType.bossNameRes(): Int = when (this) {
+    ZombieType.BRUTE -> R.string.boss_brute
+    ZombieType.MOTHER -> R.string.boss_mother
+    else -> R.string.boss_generic
+}
+
+/** Name and health bar of the living boss; turns orange once it is enraged. */
+@Composable
+private fun BossBar(boss: ZombieType, percent: Int) {
+    val enraged = percent.toFloat() / 100f <= GameConfig.BOSS_ENRAGE_FRACTION
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(top = 6.dp)) {
+        Text(
+            text = stringResource(boss.bossNameRes()),
+            color = colorResource(R.color.hud_banner_text),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Black
+        )
+        Box(
+            modifier = Modifier
+                .width(260.dp)
+                .height(14.dp)
+                .clip(RoundedCornerShape(50))
+                .background(colorResource(R.color.hud_boss_back))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(percent / 100f)
+                    .background(colorResource(if (enraged) R.color.hud_boss_enraged else R.color.hud_boss_fill))
+            )
         }
     }
 }
@@ -153,6 +213,15 @@ private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
             fontWeight = FontWeight.Black,
             textAlign = TextAlign.Center
         )
+        if (hud.bossWave) {
+            Text(
+                text = stringResource(R.string.hud_banner_boss),
+                color = colorResource(R.color.boss_warning),
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+        }
         Text(
             text = stringResource(R.string.hud_banner_starts_in_format, hud.countdownSeconds),
             color = colorResource(R.color.hud_banner_text),

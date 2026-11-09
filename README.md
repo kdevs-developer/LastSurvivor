@@ -13,9 +13,34 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 | 5 | Shooting and Collision Detection | Done |
 | 6 | Health, Damage and Wave Progression | Done |
 | 7 | Weapons and Upgrade System | Done |
-| 8 | Power-ups and Boss Fights | Next |
-| 9 | Graphics, Animations and Sound Effects | Pending |
+| 8 | Power-ups and Boss Fights | Done |
+| 9 | Graphics, Animations and Sound Effects | Next |
 | 10 | DataStore, Optimization and Testing | Pending |
+
+## Phase 8: Power-ups and Boss Fights
+
+- **Power-up drops:** zombies drop a pickup when they die (Walker 5%, Runner 7%, Toxic 10%, Tank 25%, set by `ZombieType.dropChance`). Walk over one to collect it. It stays 14 s and blinks for the last 4. Below 40% health, medkits are twice as likely. Types and weights are in `game/entities/PowerUpType.kt`.
+
+| Power-up | Effect |
+|---|---|
+| Medkit (green cross) | +40 HP and cures poison |
+| Rapid Fire (yellow >>) | Half the time between shots for 8 s |
+| Double Damage (red crosshair) | Bullets deal 2x damage for 8 s |
+| Shield (blue) | No damage at all (including poison ticks) for 6 s |
+| Grenades (brown) | +2 grenades (max 5) |
+
+  Active buffs show as chips under the kills/coins row, with seconds left; the shield draws a bubble around the player and Double Damage a red aura. Buffs do not stack: picking one up again refreshes it. All numbers are in `GameConfig.kt` (Phase 8 sections).
+- **Real grenades:** the Grenade button throws one in the facing direction (you start each run with 2, max 5, count shown in the HUD). It slows to a stop over a 1.4 s fuse (about 490 units), then explodes: 140 damage at the centre falling to 40% at the 230 radius, plus knockback. It hurts zombies and bosses, never the player. The temporary debug blast is gone.
+- **Boss waves:** every 5th wave (5, 10, 15...) has a boss. It spawns at once with half the usual escort, the countdown banner says BOSS INCOMING, and clearing the wave pays double coins. A boss always drops a random power-up and a grenade pack. Bosses alternate and each later one has +50% health. Below 35% health a boss enrages (+30% speed, abilities 40% more often, orange aura and health bar). Boss tuning: `ZombieType` (BRUTE, MOTHER) and `GameConfig.BOSS_*`.
+
+| Boss | Health | Special |
+|---|---|---|
+| The Brute (wave 5, 15...) | 1200 | Every 5 s it stops and a red strip shows where it will charge. After 0.8 s it charges that line at 5x speed for 0.7 s and hits for 1.5x damage. Step aside. |
+| Brood Mother (wave 10, 20...) | 900 | Every 7 s it summons 3 Walkers around itself (not above 45 zombies alive) |
+
+- **Boss HUD:** name and health bar under the wave number while a boss is alive (`ui/game/hud/GameHud.kt`).
+- **Saving:** nothing new is stored. Power-ups and grenades are per run.
+- Zombie sprites for the bosses are still the generated placeholders (bigger, with a coloured aura). Real art arrives in Phase 9.
 
 ## Phase 5: Shooting and Collision Detection
 
@@ -25,7 +50,7 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 - **Damage:** a hit deals 20 damage, knocks the zombie back slightly, flashes it and shows its health bar. A Walker takes 2 hits, a Runner 4, a Toxic 5 and a Tank 15.
 - **Impacts:** a short blood puff on a zombie, a dust puff where a bullet hits the map edge (`ImpactEffect`, pooled).
 - **Stats:** the debug overlay shows kills, shots fired, hits and accuracy.
-- **Temporary:** the grenade button is still a debug blast, and reload is still a placeholder. Real versions arrive in Phases 7 and 8.
+- Reload and grenades were placeholders here; real versions arrived in Phases 7 and 8.
 - Per-weapon tuning moved to `game/weapons/WeaponType.kt` in Phase 7; knockback and bullet size are in `game/engine/GameConfig.kt`.
 
 ## Phase 7: Weapons and Upgrade System
@@ -44,7 +69,6 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 - **Upgrades:** four tracks per weapon, 5 levels each: damage (+15% per level), fire rate (-8% time between shots per level), magazine (+20% per level) and reload speed (-8% time per level). A level costs `upgradeBaseCost x (level + 1)` coins. Numbers are in `game/weapons/WeaponStats.kt` (`UpgradeConfig`).
 - **Weapon Upgrades screen** (`ui/upgrades/`), opened from the main menu: weapon list on the left with unlock/equip state, details on the right with a stat preview (`current -> next`), level pips and upgrade buttons. Buttons are disabled when you can't afford them.
 - **Saving:** unlocked weapons, the equipped weapon and all upgrade levels are stored in DataStore (`PlayerPrefsRepository`). Purchases check and spend coins inside one DataStore transaction, so coins can't go negative. The game equips your chosen weapon, with its upgrades, at the start of each run.
-- **Still temporary:** the grenade button is a debug blast until Phase 8.
 
 ## Phase 6: Health, Damage and Wave Progression
 
@@ -78,14 +102,15 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 | `strings_controls.xml` | On-screen control descriptions |
 | `strings_hud.xml` | In-game HUD and debug overlay |
 | `strings_upgrades.xml` | Weapons and the upgrade screen |
+| `strings_powerups.xml` | Power-ups, grenades and boss fights (HUD banner, boss names) |
 
-Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`.
+Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`.
 
 ## Project layout
 
 ```
 game/engine    GameLoop, GameWorld, GameConfig, WaveManager, HudState, Collision, Camera, InputState, ObjectPool
-game/entities  Entity, Player, Zombie, ZombieType, Bullet, ImpactEffect
+game/entities  Entity, Player, Zombie, ZombieType, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
 game/weapons   WeaponType, WeaponStats (+ UpgradeConfig), WeaponState, WeaponInventory
 game/render    GameRenderer, GameColors, PlaceholderSprites
 ui/menu        Main menu and placeholder screens

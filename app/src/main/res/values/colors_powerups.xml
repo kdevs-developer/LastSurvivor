@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: power-ups, grenades and boss fights (Phase 8) -->
+<resources>
+    <!-- Boss zombies (GameColors indexes: walker, runner, tank, toxic, brute, mother) -->
+    <color name="zombie_skin_brute">#FF8E4B4B</color>
+    <color name="zombie_cloth_brute">#FF3A1F1F</color>
+    <color name="zombie_glow_brute">#55D32F2F</color>
+    <color name="zombie_skin_mother">#FF8C6BB0</color>
+    <color name="zombie_cloth_mother">#FF2E1F3F</color>
+    <color name="zombie_glow_mother">#558E5BC8</color>
+
+    <!-- Power-ups, grenades, explosions -->
+    <color name="powerup_medkit">#FF43A047</color>
+    <color name="powerup_rapid">#FFFFB300</color>
+    <color name="powerup_damage">#FFE53935</color>
+    <color name="powerup_shield">#FF1E88E5</color>
+    <color name="powerup_grenade">#FF6D4C41</color>
+    <color name="powerup_symbol">#FFFFFFFF</color>
+    <color name="powerup_ring">#88FFFFFF</color>
+    <color name="shield_bubble">#5542A5F5</color>
+    <color name="damage_aura">#44FF5252</color>
+    <color name="grenade_body">#FF37474F</color>
+    <color name="grenade_flash">#FFFF5722</color>
+    <color name="explosion_fill">#FFFF9800</color>
+    <color name="explosion_ring">#FFFFEB3B</color>
+
+    <!-- Boss warning, enrage and HUD boss bar -->
+    <color name="boss_warning">#FFFF1744</color>
+    <color name="boss_enraged">#44FF1744</color>
+    <color name="hud_boss_back">#99000000</color>
+    <color name="hud_boss_fill">#FFC62828</color>
+    <color name="hud_boss_enraged">#FFFF6F00</color>
+</resources>

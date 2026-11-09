@@ -12,7 +12,8 @@ import kotlin.random.Random
  * Wave progression: countdown -> spawn the wave's zombies -> wait until all are dead ->
  * award the clear bonus -> next countdown. Each wave has more zombies, which are tougher and
  * (slightly) faster, and new zombie types unlock at the waves set in [ZombieType.unlockWave].
- * All tuning lives in [GameConfig]. Phase 8 hooks boss waves in here.
+ * Every [GameConfig.BOSS_WAVE_INTERVAL]th wave is a boss wave: the boss spawns at once with a
+ * smaller escort, and clearing it pays double. All tuning lives in [GameConfig].
  */
 class WaveManager(private val world: GameWorld) {
 
@@ -32,6 +33,12 @@ class WaveManager(private val world: GameWorld) {
     val zombiesLeft: Int get() = toSpawn + world.aliveZombies
 
     private val types: Array<ZombieType> = ZombieType.entries.toTypedArray()
+    private val bosses: List<ZombieType> = ZombieType.entries.filter { it.isBoss }
+
+    /** True when the current wave (the one counting down or in progress) has a boss. */
+    val isBossWave: Boolean get() = isBossWave(wave)
+
+    private fun isBossWave(w: Int): Boolean = w % GameConfig.BOSS_WAVE_INTERVAL == 0
 
     fun reset() {
         wave = 1
@@ -55,8 +62,32 @@ class WaveManager(private val world: GameWorld) {
     private fun startWave() {
         phase = WavePhase.ACTIVE
         clearedBonus = 0
-        toSpawn = min(GameConfig.WAVE_BASE_COUNT + GameConfig.WAVE_COUNT_PER_WAVE * wave, GameConfig.WAVE_MAX_COUNT)
+        val normalCount = min(GameConfig.WAVE_BASE_COUNT + GameConfig.WAVE_COUNT_PER_WAVE * wave, GameConfig.WAVE_MAX_COUNT)
+        toSpawn = if (isBossWave) (normalCount * GameConfig.BOSS_WAVE_ESCORT_FRACTION).toInt() else normalCount
         spawnTimer = 0.5f
+        if (isBossWave) spawnBoss()
+    }
+
+    /** Bosses alternate through the boss types and get tougher each time. */
+    private fun spawnBoss() {
+        val bossNumber = wave / GameConfig.BOSS_WAVE_INTERVAL // 1 for the first boss
+        val type = bosses[(bossNumber - 1) % bosses.size]
+        val healthScale = 1f + GameConfig.BOSS_HEALTH_PER_BOSS * (bossNumber - 1)
+        spawnOffscreen(type, healthScale, 1f)
+    }
+
+    /** A Brood Mother's summon: [count] Walkers in a ring just outside the boss. */
+    fun spawnMinions(cx: Float, cy: Float, ringRadius: Float, count: Int) {
+        val type = ZombieType.WALKER
+        val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (wave - 1)
+        val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (wave - 1))
+        val start = Random.nextFloat() * (2f * Math.PI.toFloat())
+        for (i in 0 until count) {
+            val a = start + i * (2f * Math.PI.toFloat() / count)
+            val x = (cx + cos(a) * (ringRadius + type.radius)).coerceIn(type.radius, GameWorld.WIDTH - type.radius)
+            val y = (cy + sin(a) * (ringRadius + type.radius)).coerceIn(type.radius, GameWorld.HEIGHT - type.radius)
+            world.spawnZombie(type, x, y, healthScale, speedScale)
+        }
     }
 
     private fun updateActive(dt: Float) {
@@ -75,7 +106,8 @@ class WaveManager(private val world: GameWorld) {
     }
 
     private fun clearWave() {
-        clearedBonus = GameConfig.WAVE_CLEAR_COINS_PER_WAVE * wave
+        clearedBonus = GameConfig.WAVE_CLEAR_COINS_PER_WAVE * wave *
+            (if (isBossWave) GameConfig.BOSS_CLEAR_COIN_MULT else 1)
         world.addCoins(clearedBonus)
         wave++
         phase = WavePhase.COUNTDOWN
@@ -89,10 +121,12 @@ class WaveManager(private val world: GameWorld) {
         min(GameConfig.WAVE_MAX_ALIVE_BASE + GameConfig.WAVE_MAX_ALIVE_PER_WAVE * wave, GameConfig.WAVE_MAX_ALIVE_CAP)
 
     private fun spawnOne() {
-        val type = pickType()
         val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (wave - 1)
         val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (wave - 1))
+        spawnOffscreen(pickType(), healthScale, speedScale)
+    }
 
+    private fun spawnOffscreen(type: ZombieType, healthScale: Float, speedScale: Float) {
         // Just outside the visible area, in a random direction around the player.
         val vw = world.viewportWidth
         val vh = world.viewportHeight

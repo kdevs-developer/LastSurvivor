@@ -1,5 +1,6 @@
 package com.kdevs.lastsurvivor.game.entities
 
+import com.kdevs.lastsurvivor.game.engine.GameConfig
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
@@ -17,6 +18,7 @@ class Zombie : Entity(0f, 0f, 26f) {
         private const val FIRST_SWING_DELAY = 0.4f
         private const val ATTACK_REACH = 12f // extra distance beyond touching at which it can swing
     }
+    // Boss tuning lives in GameConfig (BOSS_*); the charge is the Brute's special.
 
     var type: ZombieType = ZombieType.WALKER
         private set
@@ -25,6 +27,10 @@ class Zombie : Entity(0f, 0f, 26f) {
     var maxHealth: Float = 0f
     var speed: Float = 0f
     var attackDamage: Float = 0f
+
+    /** Damage of the swing that just landed: normal, or boosted while a boss is charging. */
+    var swingDamage: Float = 0f
+        private set
 
     var state: ZombieState = ZombieState.IDLE
         private set
@@ -35,6 +41,27 @@ class Zombie : Entity(0f, 0f, 26f) {
     var attackAnim: Float = 0f      // >0 while the swing animation plays
     var hitFlash: Float = 0f        // Phase 5 draws a white flash while >0
     var deathTimer: Float = 0f      // counts down while the death animation plays
+
+    // ---- boss state (unused by normal zombies) ----
+    /** >0 while a boss telegraphs a charge: it stands still and the renderer draws a warning. */
+    var windup: Float = 0f
+        private set
+    /** >0 while a boss is mid-charge. */
+    var charging: Float = 0f
+        private set
+    var enraged: Boolean = false
+        private set
+    /** Set by a Brood Mother when it wants minions; GameWorld consumes it. */
+    var summonReady: Boolean = false
+    /** Direction of the current or last charge, so the renderer can draw the warning line. */
+    var chargeDirX: Float = 1f
+        private set
+    var chargeDirY: Float = 0f
+        private set
+    private var abilityTimer: Float = 0f
+    private var chargeHit: Boolean = false
+
+    val isBoss: Boolean get() = type.isBoss
 
     val alive: Boolean get() = state != ZombieState.DEAD
     val finished: Boolean get() = state == ZombieState.DEAD && deathTimer <= 0f
@@ -48,6 +75,13 @@ class Zombie : Entity(0f, 0f, 26f) {
         health = maxHealth
         speed = type.speed * speedScale
         attackDamage = type.attackDamage
+        swingDamage = attackDamage
+        windup = 0f
+        charging = 0f
+        enraged = false
+        summonReady = false
+        chargeHit = false
+        abilityTimer = type.abilityInterval
         state = ZombieState.IDLE
         animTime = (x * 0.013f) % 1f      // de-synchronise walk cycles between zombies
         attackTimer = FIRST_SWING_DELAY
@@ -98,9 +132,35 @@ class Zombie : Entity(0f, 0f, 26f) {
 
         var swung = false
         var moved = false
+        var busy = false // a boss ability (windup or charge) is controlling this tick
         val reach = radius + player.radius + ATTACK_REACH
+        swingDamage = attackDamage
 
-        if (dist <= reach) {
+        if (type.isBoss) {
+            updateBossAbility(dt)
+            if (windup > 0f) {
+                busy = true
+                windup -= dt
+                if (windup <= 0f) startCharge(dx, dy, dist)
+            } else if (charging > 0f) {
+                busy = true
+                charging -= dt
+                x += chargeDirX * speed * GameConfig.BOSS_CHARGE_SPEED_MULT * dt
+                y += chargeDirY * speed * GameConfig.BOSS_CHARGE_SPEED_MULT * dt
+                rotation = atan2(chargeDirY, chargeDirX)
+                moved = true
+                if (!chargeHit && dist <= reach) {
+                    chargeHit = true
+                    swung = true
+                    attackAnim = ATTACK_ANIM_SECONDS
+                    swingDamage = attackDamage * GameConfig.BOSS_CHARGE_DAMAGE_MULT
+                }
+            }
+        }
+
+        if (busy) {
+            // ability in control: no normal walking or swinging this tick
+        } else if (dist <= reach) {
             if (attackTimer <= 0f) {
                 attackAnim = ATTACK_ANIM_SECONDS
                 attackTimer = type.attackCooldown
@@ -119,5 +179,31 @@ class Zombie : Entity(0f, 0f, 26f) {
             else -> ZombieState.IDLE
         }
         return swung
+    }
+
+    /** Boss only: enrage at low health, count down to the next special ability and trigger it. */
+    private fun updateBossAbility(dt: Float) {
+        if (!enraged && health <= maxHealth * GameConfig.BOSS_ENRAGE_FRACTION) {
+            enraged = true
+            speed *= GameConfig.BOSS_ENRAGE_SPEED_MULT
+        }
+        if (windup > 0f || charging > 0f) return
+        abilityTimer -= dt
+        if (abilityTimer > 0f) return
+        abilityTimer = type.abilityInterval * (if (enraged) GameConfig.BOSS_ENRAGE_ABILITY_MULT else 1f)
+        when (type) {
+            ZombieType.BRUTE -> windup = GameConfig.BOSS_CHARGE_WINDUP
+            ZombieType.MOTHER -> summonReady = true
+            else -> Unit
+        }
+    }
+
+    /** Locks the charge direction at the moment the warning ends, so the player can dodge sideways. */
+    private fun startCharge(dx: Float, dy: Float, dist: Float) {
+        val inv = if (dist > 0.001f) 1f / dist else 0f
+        chargeDirX = if (dist > 0.001f) dx * inv else 1f
+        chargeDirY = dy * inv
+        charging = GameConfig.BOSS_CHARGE_SECONDS
+        chargeHit = false
     }
 }

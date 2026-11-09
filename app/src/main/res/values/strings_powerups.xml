@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: power-ups, grenades and boss fights (Phase 8) -->
+<resources>
+    <string name="hud_grenades_format">x%1$d</string>
+    <string name="hud_buff_seconds_format">%1$ds</string>
+    <string name="hud_banner_boss">BOSS INCOMING</string>
+    <string name="boss_brute">THE BRUTE</string>
+    <string name="boss_mother">BROOD MOTHER</string>
+    <string name="boss_generic">BOSS</string>
+</resources>

@@ -38,10 +38,13 @@ class WeaponState {
         return true
     }
 
-    /** Uses one round and starts the cooldown; reloads automatically when the magazine empties. */
-    fun consumeShot() {
+    /**
+     * Uses one round and starts the cooldown; reloads automatically when the magazine empties.
+     * [cooldownScale] below 1 shortens the wait (the Rapid Fire power-up).
+     */
+    fun consumeShot(cooldownScale: Float = 1f) {
         ammo--
-        cooldown = stats.fireInterval
+        cooldown = stats.fireInterval * cooldownScale
         if (ammo <= 0) startReload()
     }
 

@@ -11,13 +11,18 @@ import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.GameWorld
 import com.kdevs.lastsurvivor.game.entities.Bullet
+import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
+import com.kdevs.lastsurvivor.game.entities.Grenade
 import com.kdevs.lastsurvivor.game.entities.ImpactEffect
+import com.kdevs.lastsurvivor.game.entities.PowerUp
+import com.kdevs.lastsurvivor.game.entities.PowerUpType
 import com.kdevs.lastsurvivor.game.entities.Zombie
 import com.kdevs.lastsurvivor.game.entities.ZombieState
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Draws a GameWorld onto a Canvas. Allocation-free in render(): every Paint, Matrix and
@@ -78,6 +83,37 @@ class GameRenderer(context: Context) {
     private val reloadBackPaint = Paint().apply { color = colors.reloadBarBack }
     private val reloadFillPaint = Paint().apply { color = colors.reloadBarFill }
 
+    // Phase 8: power-ups, grenades, explosions, shield / damage auras, boss warnings
+    private val powerUpPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val powerUpRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = colors.powerUpRing
+        style = Paint.Style.STROKE
+        strokeWidth = 3f
+    }
+    private val symbolPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = colors.powerUpSymbol
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+        strokeCap = Paint.Cap.ROUND
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val symbolFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.powerUpSymbol }
+    private val bubblePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.shieldBubble }
+    private val auraPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.damageAura }
+    private val grenadeBodyPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.grenadeBody }
+    private val grenadeFlashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.grenadeFlash }
+    private val explosionFillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.explosionFill }
+    private val explosionRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = colors.explosionRing
+        style = Paint.Style.STROKE
+    }
+    private val warningPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = colors.bossWarning
+        style = Paint.Style.STROKE
+        strokeCap = Paint.Cap.BUTT
+    }
+    private val enragedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.bossEnraged }
+
     private val matrix = Matrix()
 
     // HUD strings are rebuilt only when the numbers behind them change.
@@ -101,9 +137,13 @@ class GameRenderer(context: Context) {
         canvas.drawRect(0f, 0f, GameWorld.WIDTH, GameWorld.HEIGHT, floorPaint)
         canvas.drawRect(0f, 0f, GameWorld.WIDTH, GameWorld.HEIGHT, boundsPaint)
 
+        drawPowerUps(canvas, world)
+        drawBossWarnings(canvas, world)
         drawZombies(canvas, world)
+        drawGrenades(canvas, world)
         drawBullets(canvas, world)   // before the player: bullets appear to leave the barrel
         drawPlayer(canvas, world)
+        drawExplosions(canvas, world)
         drawImpacts(canvas, world)
         drawReloadBar(canvas, world)
 
@@ -137,11 +177,17 @@ class GameRenderer(context: Context) {
     private fun drawPlayer(canvas: Canvas, world: GameWorld) {
         val p = world.player
         canvas.drawCircle(p.x + 6f, p.y + 8f, p.radius, shadowPaint)
+        if (p.damageBoost) canvas.drawCircle(p.x, p.y, p.radius + 10f, auraPaint)
         val half = playerSprite.width / 2f
         matrix.reset()
         matrix.postRotate(Math.toDegrees(p.rotation.toDouble()).toFloat(), half, half)
         matrix.postTranslate(p.x - half, p.y - half)
         canvas.drawBitmap(playerSprite, matrix, spritePaint)
+        // shield bubble; it blinks during its last two seconds
+        if (p.shielded && (p.shieldTimer > 2f || ((p.shieldTimer * 8f).toInt() and 1) == 0)) {
+            canvas.drawCircle(p.x, p.y, p.radius + 16f, bubblePaint)
+            canvas.drawCircle(p.x, p.y, p.radius + 16f, powerUpRingPaint)
+        }
 
         val cosR = cos(p.rotation)
         val sinR = sin(p.rotation)
@@ -167,6 +213,114 @@ class GameRenderer(context: Context) {
         val y = p.y - p.radius - 24f
         canvas.drawRect(p.x - half, y, p.x + half, y + 6f, reloadBackPaint)
         canvas.drawRect(p.x - half, y, p.x - half + 2f * half * w.reloadProgress, y + 6f, reloadFillPaint)
+    }
+
+    /** Pickups: a coloured disc with a white symbol, bobbing, blinking when about to expire. */
+    private fun drawPowerUps(canvas: Canvas, world: GameWorld) {
+        val margin = 80f
+        val left = world.camera.x - margin
+        val top = world.camera.y - margin
+        val right = world.camera.x + world.viewportWidth + margin
+        val bottom = world.camera.y + world.viewportHeight + margin
+
+        val list = world.powerUps
+        var i = 0
+        while (i < list.size) {
+            val u: PowerUp = list[i]
+            i++
+            if (u.x < left || u.x > right || u.y < top || u.y > bottom) continue
+            if (u.expiring && ((u.age * 8f).toInt() and 1) == 0) continue
+            val cy = u.y + sin(u.age * 4f) * 4f
+            val r = u.radius
+            canvas.drawCircle(u.x + 3f, cy + 6f, r, shadowPaint)
+            canvas.drawCircle(u.x, cy, r + 5f + 3f * sin(u.age * 6f), powerUpRingPaint)
+            powerUpPaint.color = colors.powerUp[u.type.ordinal]
+            canvas.drawCircle(u.x, cy, r, powerUpPaint)
+            drawPowerUpSymbol(canvas, u.type, u.x, cy, r)
+        }
+    }
+
+    /** Symbols are drawn from lines and circles so they need no bitmaps. */
+    private fun drawPowerUpSymbol(canvas: Canvas, type: PowerUpType, cx: Float, cy: Float, r: Float) {
+        val s = r * 0.5f
+        when (type) {
+            PowerUpType.MEDKIT -> {
+                canvas.drawLine(cx - s, cy, cx + s, cy, symbolPaint)
+                canvas.drawLine(cx, cy - s, cx, cy + s, symbolPaint)
+            }
+            PowerUpType.RAPID_FIRE -> {
+                // two chevrons: ">>"
+                canvas.drawLine(cx - s, cy - s, cx - s * 0.1f, cy, symbolPaint)
+                canvas.drawLine(cx - s * 0.1f, cy, cx - s, cy + s, symbolPaint)
+                canvas.drawLine(cx + s * 0.1f, cy - s, cx + s, cy, symbolPaint)
+                canvas.drawLine(cx + s, cy, cx + s * 0.1f, cy + s, symbolPaint)
+            }
+            PowerUpType.DOUBLE_DAMAGE -> {
+                // crosshair
+                canvas.drawCircle(cx, cy, s, symbolPaint)
+                canvas.drawCircle(cx, cy, 2.5f, symbolFillPaint)
+                canvas.drawLine(cx - s * 1.4f, cy, cx - s * 0.6f, cy, symbolPaint)
+                canvas.drawLine(cx + s * 0.6f, cy, cx + s * 1.4f, cy, symbolPaint)
+            }
+            PowerUpType.SHIELD -> {
+                canvas.drawLine(cx - s, cy - s, cx + s, cy - s, symbolPaint)
+                canvas.drawLine(cx + s, cy - s, cx + s, cy, symbolPaint)
+                canvas.drawLine(cx + s, cy, cx, cy + s * 1.2f, symbolPaint)
+                canvas.drawLine(cx, cy + s * 1.2f, cx - s, cy, symbolPaint)
+                canvas.drawLine(cx - s, cy, cx - s, cy - s, symbolPaint)
+            }
+            PowerUpType.GRENADE -> {
+                canvas.drawCircle(cx, cy + s * 0.2f, s * 0.9f, symbolFillPaint)
+                canvas.drawLine(cx, cy - s * 0.7f, cx + s * 0.5f, cy - s * 1.2f, symbolPaint)
+            }
+        }
+    }
+
+    private fun drawGrenades(canvas: Canvas, world: GameWorld) {
+        val list = world.grenades
+        var i = 0
+        while (i < list.size) {
+            val g: Grenade = list[i]
+            i++
+            canvas.drawCircle(g.x + 3f, g.y + 5f, g.radius, shadowPaint)
+            canvas.drawCircle(g.x, g.y, g.radius, grenadeBodyPaint)
+            // the warning light blinks faster as the fuse runs out
+            if (((g.age * (6f + 14f * g.fuseProgress)).toInt() and 1) == 0) {
+                canvas.drawCircle(g.x, g.y, g.radius * 0.5f, grenadeFlashPaint)
+            }
+        }
+    }
+
+    private fun drawExplosions(canvas: Canvas, world: GameWorld) {
+        val list = world.explosions
+        var i = 0
+        while (i < list.size) {
+            val e: ExplosionEffect = list[i]
+            i++
+            val t = e.progress
+            val grow = 1f - (1f - t) * (1f - t) // fast start, slow finish
+            explosionFillPaint.alpha = (170 * (1f - t)).toInt()
+            canvas.drawCircle(e.x, e.y, e.radius * (0.25f + 0.75f * grow), explosionFillPaint)
+            explosionRingPaint.alpha = (255 * (1f - t)).toInt()
+            explosionRingPaint.strokeWidth = 4f + 10f * (1f - t)
+            canvas.drawCircle(e.x, e.y, e.radius * grow, explosionRingPaint)
+        }
+    }
+
+    /** Red strip from a winding-up Brute towards the player: step out of it before it charges. */
+    private fun drawBossWarnings(canvas: Canvas, world: GameWorld) {
+        val boss = world.boss ?: return
+        if (boss.windup <= 0f) return
+        val dx = world.player.x - boss.x
+        val dy = world.player.y - boss.y
+        val len = sqrt(dx * dx + dy * dy)
+        if (len < 1f) return
+        val nx = dx / len
+        val ny = dy / len
+        val reach = 900f
+        warningPaint.strokeWidth = boss.radius * 1.5f
+        warningPaint.alpha = 50 + (50 * (0.5f + 0.5f * sin(boss.windup * 30f))).toInt()
+        canvas.drawLine(boss.x, boss.y, boss.x + nx * reach, boss.y + ny * reach, warningPaint)
     }
 
     private fun drawBullets(canvas: Canvas, world: GameWorld) {
@@ -244,6 +398,7 @@ class GameRenderer(context: Context) {
         }
 
         canvas.drawCircle(z.x + 4f, z.y + 6f, z.radius, shadowPaint)
+        if (z.enraged) canvas.drawCircle(z.x, z.y, z.radius + 14f, enragedPaint)
         canvas.drawBitmap(bmp, matrix, spritePaint)
 
         // health bar once damaged
