@@ -1,5 +1,6 @@
 package com.kdevs.lastsurvivor.ui.settings
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,6 +75,7 @@ private typealias SettingsUpdate = ((GameSettings) -> GameSettings) -> Unit
  * Two grouped panels (Feel, Display) side by side on wide screens or stacked on narrow ones, then a
  * danger strip for Reset progress. The page scrolls when it does not fit.
  */
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = viewModel()) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
