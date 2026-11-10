@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: Settings screen. Shares the neon_* colours from colors_menu.xml; these are the screen-only extras. -->
+<resources>
+    <color name="settings_background">#FF07060C</color>
+    <color name="settings_on_accent">#FF07060C</color>
+    <color name="settings_switch_off_track">#FF2F3A26</color>
+    <color name="settings_divider">#FF16260B</color>
+    <color name="settings_danger_border">#FF7F1414</color>
+    <color name="settings_danger_outline">#FFE24B4A</color>
+    <color name="settings_danger_text">#FFF09595</color>
+</resources>

@@ -2,6 +2,9 @@
 <!-- Module: settings screen (Phase 10) -->
 <resources>
     <string name="settings_title">SETTINGS</string>
+    <string name="settings_group_feel">Feel</string>
+    <string name="settings_group_display">Display</string>
+
     <string name="settings_sound">Sound effects</string>
     <string name="settings_screen_shake">Screen shake</string>
     <string name="settings_screen_shake_desc">Camera shakes when you are hurt and on explosions</string>
@@ -15,6 +18,7 @@
     <string name="settings_gore_normal">Normal</string>
 
     <string name="settings_reset">Reset progress</string>
+    <string name="settings_reset_button">RESET</string>
     <string name="settings_reset_desc">Erase coins, weapons, best wave, outfit and statistics</string>
     <string name="settings_reset_confirm_title">Reset all progress?</string>
     <string name="settings_reset_confirm_message">Your coins, unlocked weapons and upgrades, best wave, outfit, statistics and saved run will be erased. Settings are kept. This cannot be undone.</string>
