@@ -1,9 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Module: character screen and statistics (Phase 10) -->
 <resources>
-    <string name="character_title">CHARACTER</string>
+    <string name="character_title">SURVIVOR</string>
     <string name="character_outfit_heading">Outfit</string>
     <string name="character_stats_heading">Statistics</string>
+    <string name="character_outfit_format">Outfit %1$d of %2$d</string>
+    <string name="character_previous">Previous outfit</string>
+    <string name="character_next">Next outfit</string>
 
     <string name="skin_survivor">Survivor</string>
     <string name="skin_ranger">Ranger</string>

@@ -14,7 +14,7 @@ fun CharacterSkin.nameRes(): Int = when (this) {
     CharacterSkin.SHADOW -> R.string.skin_shadow
 }
 
-/** The jacket colour, used for the preview swatch. */
+/** The jacket colour, used for the character preview. */
 @ColorRes
 fun CharacterSkin.bodyColorRes(): Int = when (this) {
     CharacterSkin.SURVIVOR -> R.color.player_body
@@ -23,11 +23,20 @@ fun CharacterSkin.bodyColorRes(): Int = when (this) {
     CharacterSkin.SHADOW -> R.color.skin_shadow_body
 }
 
-/** The sleeve colour, used for the preview swatch ring. */
+/** The sleeve colour, used for the character preview. */
 @ColorRes
 fun CharacterSkin.armColorRes(): Int = when (this) {
     CharacterSkin.SURVIVOR -> R.color.player_arm
     CharacterSkin.RANGER -> R.color.skin_ranger_arm
     CharacterSkin.SCAVENGER -> R.color.skin_scavenger_arm
     CharacterSkin.SHADOW -> R.color.skin_shadow_arm
+}
+
+/** The hair colour, used for the character preview. */
+@ColorRes
+fun CharacterSkin.hairColorRes(): Int = when (this) {
+    CharacterSkin.SURVIVOR -> R.color.player_hair
+    CharacterSkin.RANGER -> R.color.skin_ranger_hair
+    CharacterSkin.SCAVENGER -> R.color.skin_scavenger_hair
+    CharacterSkin.SHADOW -> R.color.skin_shadow_hair
 }
