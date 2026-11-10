@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: character (Phase 10). Outfit colours; the default Survivor outfit uses the player_* colours in colors.xml. -->
+<resources>
+    <color name="skin_ranger_body">#FF3F6B3A</color>
+    <color name="skin_ranger_arm">#FF55844B</color>
+    <color name="skin_ranger_pack">#FF4A3B22</color>
+    <color name="skin_ranger_hair">#FF2B2B2B</color>
+
+    <color name="skin_scavenger_body">#FFA8672A</color>
+    <color name="skin_scavenger_arm">#FFC27F3C</color>
+    <color name="skin_scavenger_pack">#FF5A3A1B</color>
+    <color name="skin_scavenger_hair">#FF8A6D3B</color>
+
+    <color name="skin_shadow_body">#FF3A3547</color>
+    <color name="skin_shadow_arm">#FF4F4962</color>
+    <color name="skin_shadow_pack">#FF1F1C28</color>
+    <color name="skin_shadow_hair">#FFB8B8C8</color>
+
+    <!-- Character screen -->
+    <color name="character_card_selected">#33FF3B30</color>
+    <color name="character_card">#22FFFFFF</color>
+    <color name="character_stat_label">#B3FFFFFF</color>
+</resources>

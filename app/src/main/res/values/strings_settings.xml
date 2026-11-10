@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: settings screen (Phase 10) -->
+<resources>
+    <string name="settings_title">SETTINGS</string>
+    <string name="settings_sound">Sound effects</string>
+    <string name="settings_screen_shake">Screen shake</string>
+    <string name="settings_screen_shake_desc">Camera shakes when you are hurt and on explosions</string>
+    <string name="settings_damage_numbers">Damage numbers</string>
+    <string name="settings_damage_numbers_desc">Numbers floating above zombies when they are hit</string>
+    <string name="settings_show_fps">Show FPS and debug info</string>
+    <string name="settings_show_fps_desc">Frame rate, zombies alive and shot accuracy in the corner</string>
+    <string name="settings_gore">Blood and gore</string>
+    <string name="settings_gore_off">Off</string>
+    <string name="settings_gore_low">Low</string>
+    <string name="settings_gore_normal">Normal</string>
+
+    <string name="settings_reset">Reset progress</string>
+    <string name="settings_reset_desc">Erase coins, weapons, best wave, outfit and statistics</string>
+    <string name="settings_reset_confirm_title">Reset all progress?</string>
+    <string name="settings_reset_confirm_message">Your coins, unlocked weapons and upgrades, best wave, outfit, statistics and saved run will be erased. Settings are kept. This cannot be undone.</string>
+    <string name="settings_reset_confirm">Erase</string>
+    <string name="settings_reset_cancel">Cancel</string>
+</resources>

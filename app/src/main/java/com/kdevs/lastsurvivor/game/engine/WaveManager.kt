@@ -50,6 +50,13 @@ class WaveManager(private val world: GameWorld) {
         spawnTimer = 0f
     }
 
+    /** Starts the run at [w] with a normal between-waves countdown (Continue). */
+    fun restoreWave(w: Int) {
+        reset()
+        wave = w.coerceAtLeast(1)
+        countdown = GameConfig.WAVE_COUNTDOWN
+    }
+
     fun update(dt: Float) {
         when (phase) {
             WavePhase.COUNTDOWN -> {

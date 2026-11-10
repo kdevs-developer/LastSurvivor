@@ -5,6 +5,8 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kdevs.lastsurvivor.data.PlayerPrefsRepository
 import com.kdevs.lastsurvivor.data.PlayerProgress
+import com.kdevs.lastsurvivor.data.RunCheckpoint
+import com.kdevs.lastsurvivor.data.persistenceScope
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
@@ -20,6 +22,13 @@ class MainMenuViewModel(app: Application) : AndroidViewModel(app) {
         initialValue = PlayerProgress()
     )
 
+    /** The saved wave Continue would restore, or null (the Continue button is disabled). */
+    val checkpoint: StateFlow<RunCheckpoint?> = repository.checkpoint.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = null
+    )
+
     /** The Sound switch on the main menu. */
     val soundEnabled: StateFlow<Boolean> = repository.soundEnabled.stateIn(
         scope = viewModelScope,
@@ -28,6 +37,6 @@ class MainMenuViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     fun toggleSound() {
-        viewModelScope.launch { repository.setSoundEnabled(!soundEnabled.value) }
+        persistenceScope.launch { repository.setSoundEnabled(!soundEnabled.value) }
     }
 }

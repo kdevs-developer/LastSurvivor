@@ -15,7 +15,53 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 | 7 | Weapons and Upgrade System | Done |
 | 8 | Power-ups and Boss Fights | Done |
 | 9 | Graphics, Animations and Sound Effects | Done |
-| 10 | DataStore, Optimization and Testing | Next |
+| 10 | DataStore, Optimization and Testing | Done |
+
+## Phase 10: DataStore, Optimization and Testing
+
+All ten phases are done. This phase adds saving, the two screens that were still placeholders, a performance pass and unit tests.
+
+**Saving** (`data/PlayerPrefsRepository.kt`, one DataStore file)
+
+| Saved | Where it is used |
+|---|---|
+| Coins, best wave | Main menu, upgrades |
+| Unlocked weapons, equipped weapon, upgrade levels | Upgrades screen, each run |
+| Options: sound, screen shake, gore level, damage numbers, FPS counter | Settings screen, applied to the engine at the start of a run |
+| Outfit | Character screen, player sprite |
+| Lifetime statistics: runs, kills, bosses, shots, hits, coins earned, time played | Character screen |
+| Checkpoint: wave, health, grenades | Continue button |
+
+- **Continue:** the start of every wave from wave 2 on is saved. **Continue** on the main menu (it shows the wave, and is greyed out when there is nothing saved) starts that wave again with a normal countdown, the saved grenades and at least 50% health (`GameConfig.CHECKPOINT_MIN_HEALTH_FRACTION`). Zombies, power-ups and buffs are not saved. **Play** and **Retry** throw the saved checkpoint away; dying discards it; quitting from the pause menu keeps it.
+- **Nothing is lost if the app is killed:** coins and statistics are banked at each wave start, when the app goes to the background, and when the run ends. A "bank" writes only what is new since the previous one (`RunTotals.minus`), so nothing is counted twice, and each bank is one DataStore transaction. This replaces the old rule that backing out of the app mid-run did not save.
+- **Saves finish even if the screen is gone:** they run in `persistenceScope` (process-wide), not in the game screen's ViewModel, which is cleared the moment you leave.
+- **Damaged data cannot crash the game:** a corrupt DataStore file is replaced by an empty one, a bad checkpoint string is ignored, negative numbers are clamped, upgrade levels are limited to 0..5 and unknown enum names fall back to defaults.
+- **Reset progress** (Settings) erases everything above except the options, after a confirmation.
+
+**Settings screen** (`ui/settings/`): switches for sound, screen shake, damage numbers and "Show FPS and debug info", and Off / Low / Normal for blood and gore. These replaced the `SCREEN_SHAKE_ENABLED`, `GORE_AMOUNT`, `SHOW_DAMAGE_NUMBERS` and `SHOW_DEBUG_OVERLAY` constants in `GameConfig`; the defaults are the same as before (`game/engine/GameSettings.kt`).
+
+**Character screen** (`ui/character/`): pick one of four outfits (Survivor, Ranger, Scavenger, Shadow) and read your lifetime statistics. Outfits recolour the jacket, sleeves, backpack and hair of the generated sprite (`SkinPalette`, colours in `colors_character.xml`). If you drop in real `player_*.png` art (see `assets/sprites/README.txt`) it is used as it is and the outfit choice has no effect on it.
+
+**Optimization**
+- A paused game redraws 15 times a second instead of 60 (`GameConfig.PAUSED_FPS`), which saves battery and heat while the pause menu is open.
+- The renderer was already allocation-free per frame; the new outfit code allocates only when the outfit changes. Settings are one immutable object swapped in a single write, so the game thread never reads half-changed options.
+- Zombie separation is O(n^2) but is capped at 40 alive (plus dying ones), so it stays cheap. If you raise `WAVE_MAX_ALIVE_CAP` a lot, a spatial grid is the next step.
+- `proguard-rules.pro` documents why release builds (minify + shrink) need no keep rules and adds line numbers to crash traces.
+
+**Testing** (`app/src/test`, run with `./gradlew testDebugUnitTest`)
+
+| Test class | Covers |
+|---|---|
+| `GameWorldTest` | The real simulation, headless: wave countdown, Continue (wave, health floor, clamped values, boss wave), restart, kills/coins/shots/time in the run totals, time stops at death, shake and gore settings |
+| `PlayerStatsTest` | Stats arithmetic, saturation, accuracy, play time, `RunTotals.minus` never negative |
+| `RunCheckpointTest` | Checkpoint encode/decode and rejection of damaged text |
+| `CharacterSkinTest` | Saved outfit names, fallback |
+| `CollisionTest` | Swept bullet-vs-circle hits, misses, fast bullets, ordering |
+| `WeaponTest` | Upgrade maths and costs, magazine and reload, object pool |
+| `PlayerPrefsRepositoryTest` | A real DataStore in a temporary file: banking, checkpoint lifecycle, settings, outfit, clamping, purchases, reset |
+
+- **Verification status:** all tests except `PlayerPrefsRepositoryTest` were compiled and run (38 tests, all passing) against the pure-Kotlin parts of the game in the build sandbox. The Compose screens, the renderer, DataStore and `PlayerPrefsRepositoryTest` need the Android SDK, which was not available there, so they were checked by reading only. Run **Sync, then Build, then `testDebugUnitTest`** first, and fix any compile error in those files (most likely a missing import or a changed API) before playing.
+- **Still to judge on a device:** the Ranger, Scavenger and Shadow colours, the Settings and Character layouts on your screen sizes, and that Continue feels right (wave restarts with a countdown).
 
 ## Phase 9: Graphics, Animations and Sound Effects
 
@@ -35,8 +81,8 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 - **They are synthesised, not recorded.** `tools/generate_sfx.py` (needs only numpy) creates every file, deterministically: `python tools/generate_sfx.py`. To use real recordings, drop files with the same names into `res/raw/` (`.wav` or `.ogg`; if you use another extension, update the matching `R.raw` line in `SoundManager.rawId`).
 - **How it works:** `SoundEffect` is one table of every effect (volume, minimum gap between plays, pitch variation, priority). `GameAudio` is the interface the engine talks to, so `GameWorld` stays free of Android types. `SoundManager` plays them through one `SoundPool` (14 streams) and rate-limits repeats so a shotgun blast or SMG burst cannot stack into noise.
 - **3D feel:** sounds in the world get quieter with distance (silent beyond 1500 units), pan left/right by where they are relative to the player, and big zombies sound deeper than small ones. Ambient groans come from nearby zombies every 2.5 to 6 s (more often with more zombies), and a heartbeat plays below 30% health, faster as health drops.
-- **Sound switch:** a speaker icon on the main menu and a Sound: On/Off button on the pause screen. The choice is saved in DataStore (`sound_enabled`, default on). There is no music yet.
-- **Tuning:** all numbers are in `GameConfig.kt` (Phase 9 sections: shake, particles, damage numbers, overlays, sound) and `SoundEffect.kt`. `SCREEN_SHAKE_ENABLED` turns shake off, `GORE_AMOUNT` scales blood and `SHOW_DAMAGE_NUMBERS` hides the numbers.
+- **Sound switch:** a speaker icon on the main menu, a Sound: On/Off button on the pause screen and a switch on the Settings screen. The choice is saved in DataStore (`sound_enabled`, default on). There is no music yet.
+- **Tuning:** all numbers are in `GameConfig.kt` (Phase 9 sections: shake, particles, damage numbers, overlays, sound) and `SoundEffect.kt`. Shake, blood and damage numbers are switched on the Settings screen (Phase 10).
 - **Not verified in the build sandbox:** the `game/` package was compile-checked, but Gradle could not run there, so the Compose screens were checked by reading and the art and sounds have not been seen or heard on a device. Run the game and judge the sprites, the mix and the shake strength; the config values above are the first things to adjust.
 
 ## Phase 8: Power-ups and Boss Fights
@@ -103,8 +149,8 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 - **Coins:** kills pay by type (Walker 1, Runner 2, Toxic 3, Tank 5), plus 5 x wave for clearing a wave.
 - **HUD (Compose):** `ui/game/hud/GameHud.kt` shows the health bar, poison warning, kills, coins, the current wave, zombies left and a wave banner during countdowns. It reads a `HudState` that the game thread publishes only when a value changes.
 - **Game over:** at 0 HP the simulation stops and `GameOverOverlay` shows wave reached, kills and coins, with Retry and Quit to Menu. Retry resets the world (`GameWorld.requestRestart()`).
-- **Saving:** on death or Quit to Menu the run's coins are added and the highest wave updated through `PlayerPrefsRepository` (shown on the main menu). Backing out of the app mid-run does not save; Phase 10 adds that.
-- **Debug overlay:** FPS and shot stats are hidden by default. Set `SHOW_DEBUG_OVERLAY = true` in `GameConfig.kt` to show them.
+- **Saving:** on death or Quit to Menu the run's coins are added and the highest wave updated through `PlayerPrefsRepository` (shown on the main menu). Phase 10 also banks progress when a wave starts and when the app goes to the background.
+- **Debug overlay:** FPS and shot stats are hidden by default. Turn on "Show FPS and debug info" on the Settings screen.
 - All wave and health tuning is in `GameConfig.kt`.
 
 ## Resources (colors, strings, theme)
@@ -119,7 +165,8 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 |---|---|
 | `strings.xml` | App name and shared strings |
 | `strings_menu.xml` | Main menu |
-| `strings_navigation.xml` | Placeholder screens |
+| `strings_settings.xml` | Settings screen |
+| `strings_character.xml` | Character screen: outfits and statistics |
 | `strings_game.xml` | Game screen, pause and game over overlays |
 | `strings_controls.xml` | On-screen control descriptions |
 | `strings_hud.xml` | In-game HUD and debug overlay |
@@ -127,23 +174,26 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 | `strings_powerups.xml` | Power-ups, grenades and boss fights (HUD banner, boss names) |
 | `strings_audio.xml` | Sound switch |
 
-Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`, Phase 9 colors (particles, stains, sprite details, overlays, damage numbers) in `colors_effects.xml`.
+Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`, Phase 9 colors (particles, stains, sprite details, overlays, damage numbers) in `colors_effects.xml`, Phase 10 colors (outfits, character screen) in `colors_character.xml`.
 
 ## Project layout
 
 ```
-game/engine    GameLoop, GameWorld, GameConfig, WaveManager, HudState, Collision, Camera, InputState, ObjectPool
-game/entities  Entity, Player, Zombie, ZombieType, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
+game/engine    GameLoop, GameWorld, GameConfig, GameSettings, RunTotals, WaveManager, HudState, Collision, Camera, InputState, ObjectPool
+game/entities  Entity, Player, Zombie, ZombieType, CharacterSkin, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
 game/weapons   WeaponType, WeaponStats (+ UpgradeConfig), WeaponState, WeaponInventory
 game/render    GameRenderer, GameColors, SpriteAtlas, PlaceholderSprites
 game/effects   ParticleSystem, DecalField, FloatingTexts
 game/audio     SoundEffect, GameAudio, SoundManager
 tools          generate_sfx.py (makes res/raw/*.wav)
-ui/menu        Main menu and placeholder screens
+ui/menu        Main menu
+ui/settings    SettingsScreen, SettingsViewModel
+ui/character   CharacterScreen, CharacterViewModel, SkinLabels
 ui/upgrades    UpgradesScreen, UpgradesViewModel
 ui/weapons     WeaponLabels (weapon and upgrade names for the UI)
 ui/game        GameScreen, GameOverOverlay, GameSessionViewModel, hud (GameHud), controls (joysticks and buttons)
 ui/theme       Compose Material 3 theme
 ui             Sounds.kt (rememberSoundManager for UI click sounds)
-data           PlayerPrefsRepository (DataStore: progress, weapons, sound switch)
+data           PlayerPrefsRepository (DataStore: progress, weapons, settings, outfit, statistics, checkpoint), PlayerStats, RunCheckpoint
+app/src/test   Unit tests (see Phase 10)
 ```

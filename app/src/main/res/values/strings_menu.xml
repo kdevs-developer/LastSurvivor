@@ -8,6 +8,7 @@
 
     <string name="menu_play">PLAY</string>
     <string name="menu_continue">CONTINUE</string>
+    <string name="menu_continue_wave_format">CONTINUE (WAVE %1$d)</string>
     <string name="menu_weapon_upgrades">WEAPON UPGRADES</string>
     <string name="menu_character">CHARACTER</string>
     <string name="menu_settings">SETTINGS</string>

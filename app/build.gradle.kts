@@ -58,6 +58,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     buildFeatures { compose = true }
+
+    testOptions {
+        // android.jar stubs return defaults instead of throwing, so pure game code can be unit tested on the JVM
+        unitTests.isReturnDefaultValues = true
+    }
 }
 
 dependencies {
@@ -76,4 +81,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("androidx.navigation:navigation-compose:2.8.3")
     implementation("androidx.datastore:datastore-preferences:1.1.1")
+
+    // Unit tests (app/src/test): ./gradlew testDebugUnitTest
+    testImplementation("junit:junit:4.13.2")
+    testImplementation(kotlin("test"))
 }

@@ -63,6 +63,7 @@ fun MainMenuScreen(
 ) {
     val progress by viewModel.progress.collectAsStateWithLifecycle()
     val soundEnabled by viewModel.soundEnabled.collectAsStateWithLifecycle()
+    val checkpoint by viewModel.checkpoint.collectAsStateWithLifecycle()
     val sounds = rememberSoundManager()
     /** Wraps a button action so it also plays the click sound. */
     fun clicked(action: () -> Unit): () -> Unit = {
@@ -120,7 +121,10 @@ fun MainMenuScreen(
             ) {
                 MenuButton(stringResource(R.string.menu_play), Icons.Filled.PlayArrow, primary = true, onClick = clicked(onPlay))
                 MenuButton(
-                    stringResource(R.string.menu_continue), Icons.Filled.FastForward,
+                    text = checkpoint?.let { stringResource(R.string.menu_continue_wave_format, it.wave) }
+                        ?: stringResource(R.string.menu_continue),
+                    icon = Icons.Filled.FastForward,
+                    enabled = checkpoint != null,
                     onClick = clicked(onContinue)
                 )
                 MenuButton(stringResource(R.string.menu_weapon_upgrades), Icons.Filled.Build, onClick = clicked(onUpgrades))
@@ -155,6 +159,7 @@ private fun MenuButton(
     text: String,
     icon: ImageVector,
     primary: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
     val modifier = Modifier
@@ -168,6 +173,7 @@ private fun MenuButton(
     if (primary) {
         Button(
             onClick = onClick,
+            enabled = enabled,
             modifier = modifier,
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.buttonColors(containerColor = colorResource(R.color.blood_red))
@@ -175,6 +181,7 @@ private fun MenuButton(
     } else {
         OutlinedButton(
             onClick = onClick,
+            enabled = enabled,
             modifier = modifier,
             shape = RoundedCornerShape(10.dp),
             colors = ButtonDefaults.outlinedButtonColors(

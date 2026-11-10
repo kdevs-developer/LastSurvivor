@@ -5,6 +5,7 @@ import android.content.Context
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.kdevs.lastsurvivor.game.audio.SoundManager
+import com.kdevs.lastsurvivor.game.entities.CharacterSkin
 import com.kdevs.lastsurvivor.game.render.GameRenderer
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.StateFlow
@@ -34,6 +35,18 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
 
     /** Starts a fresh run after game over. */
     fun restart() = world.requestRestart()
+
+    /** Starts the run at a saved wave (the Continue button). */
+    fun continueRun(wave: Int, health: Int, grenades: Int) = world.requestContinue(wave, health, grenades)
+
+    /** Applies the player's options (shake, gore, damage numbers, FPS counter). */
+    fun applySettings(settings: GameSettings) { world.settings = settings }
+
+    /** Chooses the outfit the player is drawn in. */
+    fun setSkin(skin: CharacterSkin) { world.skin = skin }
+
+    /** Coins, kills, shots and time of this stretch of play, for saving. */
+    fun runTotals(): RunTotals = world.runTotals()
 
     init {
         holder.addCallback(this)

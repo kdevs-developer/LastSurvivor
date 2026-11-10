@@ -6,6 +6,7 @@ import com.kdevs.lastsurvivor.game.effects.DecalField
 import com.kdevs.lastsurvivor.game.effects.FloatingTexts
 import com.kdevs.lastsurvivor.game.effects.ParticleSystem
 import com.kdevs.lastsurvivor.game.entities.Bullet
+import com.kdevs.lastsurvivor.game.entities.CharacterSkin
 import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
 import com.kdevs.lastsurvivor.game.entities.Grenade
 import com.kdevs.lastsurvivor.game.entities.ImpactEffect
@@ -82,6 +83,25 @@ class GameWorld {
     val weapon = WeaponState()
     private val pendingWeapon = AtomicReference<WeaponStats?>(null)
     private val restartRequested = AtomicBoolean(false)
+    private val pendingContinue = AtomicReference<ContinueRequest?>(null)
+
+    /** A request to start a run at a saved wave instead of wave 1. */
+    private class ContinueRequest(val wave: Int, val health: Int, val grenades: Int)
+
+    // ---- Phase 10: options, outfit and totals for saving ----
+    /** Player options. Replaced as a whole (the object is immutable), so the game thread always sees a consistent copy. */
+    @Volatile var settings: GameSettings = GameSettings()
+
+    /** The outfit the renderer draws the player in. */
+    @Volatile var skin: CharacterSkin = CharacterSkin.SURVIVOR
+
+    /** Bosses killed in this stretch of play. */
+    var bossKills: Int = 0
+        private set
+
+    /** Seconds spent alive in this stretch of play (not counting pauses or the game over screen). */
+    var runSeconds: Float = 0f
+        private set
 
     // ---- Phase 9: sound and visual effects ----
     /** Receives sound requests. Set by GameSurfaceView; null means silent (for tests). */
@@ -135,6 +155,19 @@ class GameWorld {
 
     fun addCoins(amount: Int) { coins += amount }
 
+    /**
+     * Asks the game thread to start a run at [wave] (the Continue button). Health is restored to at
+     * least [GameConfig.CHECKPOINT_MIN_HEALTH_FRACTION] of the maximum. Safe to call from any thread.
+     */
+    fun requestContinue(wave: Int, health: Int, grenades: Int) =
+        pendingContinue.set(ContinueRequest(wave, health, grenades))
+
+    /** Everything worth saving about this stretch of play. Read from the UI thread; plain ints, so a slightly stale value is harmless. */
+    fun runTotals() = RunTotals(
+        coins = coins, kills = kills, shotsFired = shotsFired, shotsHit = shotsHit,
+        bossKills = bossKills, seconds = runSeconds.toInt()
+    )
+
     /** Equips a weapon (with a full magazine) on the next tick. Safe to call from any thread. */
     fun requestEquip(stats: WeaponStats) = pendingWeapon.set(stats)
 
@@ -177,18 +210,30 @@ class GameWorld {
         shotsHit = 0
         kills = 0
         coins = 0
+        bossKills = 0
+        runSeconds = 0f
         gameOver = false
+    }
+
+    private fun applyContinue(c: ContinueRequest) {
+        reset()
+        waves.restoreWave(c.wave)
+        val minHealth = player.maxHealth * GameConfig.CHECKPOINT_MIN_HEALTH_FRACTION
+        player.health = c.health.toFloat().coerceIn(minHealth, player.maxHealth)
+        grenadeCount = c.grenades.coerceIn(0, GameConfig.GRENADE_MAX_COUNT)
     }
 
     fun update(dt: Float) {
         pendingWeapon.getAndSet(null)?.let { weapon.equip(it); wasReloading = false }
         if (restartRequested.getAndSet(false)) reset()
+        pendingContinue.getAndSet(null)?.let { applyContinue(it) }
         if (gameOver) {
             updateEffects(dt) // blood, smoke and stains keep moving behind the game over screen
             publishHud()
             return
         }
 
+        runSeconds += dt
         applyInput()
         player.update(dt)
         player.x = player.x.coerceIn(player.radius, WIDTH - player.radius)
@@ -512,6 +557,7 @@ class GameWorld {
         kills++
         coins += z.type.coinReward
         if (z.type.isBoss) {
+            bossKills++
             // Bosses always drop a random power-up and a grenade pack.
             dropPowerUp(pickDropType(), z.x - 40f, z.y)
             dropPowerUp(PowerUpType.GRENADE, z.x + 40f, z.y)
@@ -647,7 +693,7 @@ class GameWorld {
 
     /** Adds camera shake (trauma is capped at 1 and fades on its own). */
     fun addShake(amount: Float) {
-        if (!GameConfig.SCREEN_SHAKE_ENABLED) return
+        if (!settings.screenShake) return
         trauma = min(1f, trauma + amount)
     }
 
@@ -878,7 +924,7 @@ class GameWorld {
     private fun showDamageNumber(z: Zombie, kind: Int) {
         val dmg = z.pendingDamage
         z.pendingDamage = 0f
-        if (!GameConfig.SHOW_DAMAGE_NUMBERS || dmg < 0.5f) return
+        if (!settings.damageNumbers || dmg < 0.5f) return
         z.numberCooldown = GameConfig.DAMAGE_NUMBER_INTERVAL
         val k = if (kind == FloatingTexts.NORMAL && player.damageBoost) FloatingTexts.BOOSTED else kind
         floatingTexts.spawn(z.x + (Random.nextFloat() - 0.5f) * 24f, z.y - z.radius - 8f, ceil(dmg).toInt(), k)
@@ -896,7 +942,7 @@ class GameWorld {
 
     /** Blood (or toxic goo) sprayed in a cone around the direction (dirX, dirY). */
     private fun bloodBurst(x: Float, y: Float, dirX: Float, dirY: Float, count: Int, speed: Float, goo: Boolean) {
-        val n = (count * GameConfig.GORE_AMOUNT).toInt()
+        val n = (count * settings.gore.amount).toInt()
         val kind = if (goo) ParticleSystem.GOO else ParticleSystem.BLOOD
         val base = atan2(dirY, dirX)
         var i = 0
@@ -910,7 +956,7 @@ class GameWorld {
 
     /** [count] particles flying out in all directions; speed, life and size vary a little. */
     private fun radialBurst(kind: Int, x: Float, y: Float, count: Int, speed: Float, life: Float, size: Float, tag: Int = 0) {
-        val n = if (kind == ParticleSystem.BLOOD || kind == ParticleSystem.GOO) (count * GameConfig.GORE_AMOUNT).toInt() else count
+        val n = if (kind == ParticleSystem.BLOOD || kind == ParticleSystem.GOO) (count * settings.gore.amount).toInt() else count
         var i = 0
         while (i < n) {
             val a = Random.nextFloat() * 6.2832f

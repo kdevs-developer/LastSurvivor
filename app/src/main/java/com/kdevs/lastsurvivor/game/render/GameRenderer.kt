@@ -175,6 +175,7 @@ class GameRenderer(context: Context) {
 
     fun render(canvas: Canvas, world: GameWorld, fps: Int, paused: Boolean) {
         canvas.drawColor(colors.clear)
+        sprites.applySkin(world.skin) // no-op unless the outfit was changed
 
         canvas.save()
         // the camera position plus this tick's shake offset
@@ -196,13 +197,13 @@ class GameRenderer(context: Context) {
         drawImpacts(canvas, world)
         drawParticles(canvas, world)
         drawReloadBar(canvas, world)
-        if (GameConfig.SHOW_DAMAGE_NUMBERS) drawDamageNumbers(canvas, world)
+        if (world.settings.damageNumbers) drawDamageNumbers(canvas, world)
 
         canvas.restore()
 
         drawVignette(canvas, world)
         drawDamageFeedback(canvas, world)
-        if (GameConfig.SHOW_DEBUG_OVERLAY) drawDebugOverlay(canvas, world, fps)
+        if (world.settings.showFps) drawDebugOverlay(canvas, world, fps)
 
         if (paused) {
             canvas.drawRect(0f, 0f, canvas.width.toFloat(), canvas.height.toFloat(), pauseDim)

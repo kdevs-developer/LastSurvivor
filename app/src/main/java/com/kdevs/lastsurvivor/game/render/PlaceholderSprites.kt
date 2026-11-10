@@ -259,7 +259,7 @@ object PlaceholderSprites {
      * Top-down player holding [weapon], facing +X. frame 0 = standing, 1 and 2 = the two steps of a walk.
      * The barrel tip lands near WeaponType.muzzleOffset (for a 96 px sprite).
      */
-    fun player(size: Int, colors: GameColors, weapon: WeaponType, frame: Int): Bitmap {
+    fun player(size: Int, colors: GameColors, palette: SkinPalette, weapon: WeaponType, frame: Int): Bitmap {
         val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -278,11 +278,11 @@ object PlaceholderSprites {
         val pack = RectF(m - s * 0.37f, m - s * 0.16f, m - s * 0.12f, m + s * 0.16f)
         p.color = line
         c.drawRoundRect(RectF(pack.left - ow, pack.top - ow, pack.right + ow, pack.bottom + ow), s * 0.05f, s * 0.05f, p)
-        p.color = colors.playerPack
+        p.color = palette.pack
         c.drawRoundRect(pack, s * 0.04f, s * 0.04f, p)
 
         // body
-        disc(c, p, m, m, s * 0.27f, colors.playerBody, line, ow)
+        disc(c, p, m, m, s * 0.27f, palette.body, line, ow)
         shine(c, p, m, m, s * 0.27f, colors)
 
         drawWeapon(c, p, s, weapon, colors)
@@ -292,15 +292,15 @@ object PlaceholderSprites {
         val farX = when (weapon) { WeaponType.PISTOL -> 0.21f; WeaponType.SMG -> 0.31f; WeaponType.SHOTGUN -> 0.37f; WeaponType.RIFLE -> 0.39f }
         val nearY = m + s * 0.06f
         val farY = m - s * 0.05f
-        limb(c, p, m + s * 0.02f, m + s * 0.25f, m + s * nearX, nearY, s * 0.1f, colors.playerArm, line, ow)
-        limb(c, p, m + s * 0.02f, m - s * 0.25f, m + s * farX, farY, s * 0.1f, colors.playerArm, line, ow)
+        limb(c, p, m + s * 0.02f, m + s * 0.25f, m + s * nearX, nearY, s * 0.1f, palette.arm, line, ow)
+        limb(c, p, m + s * 0.02f, m - s * 0.25f, m + s * farX, farY, s * 0.1f, palette.arm, line, ow)
         disc(c, p, m + s * nearX, nearY, s * 0.055f, colors.playerSkin, line, ow * 0.8f)
         disc(c, p, m + s * farX, farY, s * 0.055f, colors.playerSkin, line, ow * 0.8f)
 
         // head and hair
         disc(c, p, m + s * 0.04f, m, s * 0.15f, colors.playerSkin, line, ow)
         p.style = Paint.Style.FILL
-        p.color = colors.playerHair
+        p.color = palette.hair
         c.drawCircle(m - s * 0.01f, m, s * 0.11f, p)
         shine(c, p, m - s * 0.01f, m, s * 0.11f, colors)
         return bmp

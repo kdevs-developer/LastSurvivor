@@ -3,6 +3,10 @@ package com.kdevs.lastsurvivor.game.render
 import android.content.Context
 import androidx.annotation.ColorRes
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+
+/** The four colours that change between outfits. */
+class SkinPalette(val body: Int, val arm: Int, val pack: Int, val hair: Int)
 
 /**
  * Every colour the SurfaceView renderer needs, resolved once from res/values/colors.xml.
@@ -122,6 +126,14 @@ class GameColors(context: Context) {
     val damageNumberBoosted = c(R.color.damage_number_boosted)
     val damageNumberKill = c(R.color.damage_number_kill)
     val damageNumberOutline = c(R.color.damage_number_outline)
+
+    /** The colours for [skin]. The default outfit uses the original player colours above. */
+    fun skinPalette(skin: CharacterSkin): SkinPalette = when (skin) {
+        CharacterSkin.SURVIVOR -> SkinPalette(playerBody, playerArm, playerPack, playerHair)
+        CharacterSkin.RANGER -> SkinPalette(c(R.color.skin_ranger_body), c(R.color.skin_ranger_arm), c(R.color.skin_ranger_pack), c(R.color.skin_ranger_hair))
+        CharacterSkin.SCAVENGER -> SkinPalette(c(R.color.skin_scavenger_body), c(R.color.skin_scavenger_arm), c(R.color.skin_scavenger_pack), c(R.color.skin_scavenger_hair))
+        CharacterSkin.SHADOW -> SkinPalette(c(R.color.skin_shadow_body), c(R.color.skin_shadow_arm), c(R.color.skin_shadow_pack), c(R.color.skin_shadow_hair))
+    }
 
     // shooting
     val bulletTracer = c(R.color.bullet_tracer)

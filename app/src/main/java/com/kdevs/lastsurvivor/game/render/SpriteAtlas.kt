@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.kdevs.lastsurvivor.game.effects.DecalField
+import com.kdevs.lastsurvivor.game.entities.CharacterSkin
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import com.kdevs.lastsurvivor.game.weapons.WeaponType
 import java.io.IOException
@@ -14,7 +15,7 @@ import java.io.IOException
  * generated art in [PlaceholderSprites]. So real artwork can be dropped in one file at a time,
  * with no code change.
  */
-class SpriteAtlas(private val context: Context, colors: GameColors) {
+class SpriteAtlas(private val context: Context, private val colors: GameColors) {
 
     companion object {
         const val PLAYER_FRAMES = 3   // 0 standing, 1 and 2 walking steps
@@ -27,11 +28,28 @@ class SpriteAtlas(private val context: Context, colors: GameColors) {
 
     val floorTile: Bitmap = load("floor.png") ?: PlaceholderSprites.floorTile(FLOOR_SIZE, colors)
 
-    /** playerSprites[weapon.ordinal][frame], file player_<weapon>_<frame>.png */
-    val playerSprites: Array<Array<Bitmap>> = Array(WeaponType.entries.size) { w ->
-        val type = WeaponType.entries[w]
-        Array(PLAYER_FRAMES) { f ->
-            load("player_${type.name.lowercase()}_$f.png") ?: PlaceholderSprites.player(PLAYER_SIZE, colors, type, f)
+    /** The outfit the current [playerSprites] are drawn in. */
+    var skin: CharacterSkin = CharacterSkin.SURVIVOR
+        private set
+
+    /** playerSprites[weapon.ordinal][frame], file player_<weapon>_<frame>.png (a PNG ignores the chosen outfit). */
+    var playerSprites: Array<Array<Bitmap>> = buildPlayerSprites(CharacterSkin.SURVIVOR)
+        private set
+
+    /** Redraws the player sprites in another outfit. Called on the game thread, only when the choice changes. */
+    fun applySkin(newSkin: CharacterSkin) {
+        if (newSkin == skin) return
+        playerSprites = buildPlayerSprites(newSkin)
+        skin = newSkin
+    }
+
+    private fun buildPlayerSprites(forSkin: CharacterSkin): Array<Array<Bitmap>> {
+        val palette = colors.skinPalette(forSkin)
+        return Array(WeaponType.entries.size) { w ->
+            val type = WeaponType.entries[w]
+            Array(PLAYER_FRAMES) { f ->
+                load("player_${type.name.lowercase()}_$f.png") ?: PlaceholderSprites.player(PLAYER_SIZE, colors, palette, type, f)
+            }
         }
     }
 

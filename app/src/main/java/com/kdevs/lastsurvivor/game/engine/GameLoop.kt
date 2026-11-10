@@ -18,6 +18,7 @@ class GameLoop(
         private const val STEP_S = 1f / 60f
         private const val MAX_FRAME_NS = 250_000_000L // avoids the "spiral of death" after stalls
         private const val TARGET_FRAME_NS = STEP_NS
+        private const val PAUSED_FRAME_NS = 1_000_000_000L / GameConfig.PAUSED_FPS
     }
 
     @Volatile private var running = true
@@ -55,7 +56,9 @@ class GameLoop(
                 fpsTimer -= 1_000_000_000L
             }
 
-            val spentMs = (TARGET_FRAME_NS - (System.nanoTime() - frameStart)) / 1_000_000L
+            // A paused game only needs to keep its dimmed picture alive, so it redraws far less often.
+            val targetNs = if (paused) PAUSED_FRAME_NS else TARGET_FRAME_NS
+            val spentMs = (targetNs - (System.nanoTime() - frameStart)) / 1_000_000L
             if (spentMs > 0) {
                 try { sleep(spentMs) } catch (e: InterruptedException) { break }
             }

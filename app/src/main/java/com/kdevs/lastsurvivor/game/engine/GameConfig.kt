@@ -95,9 +95,14 @@ object GameConfig {
     const val BOSS_SUMMON_COUNT = 3
     const val BOSS_SUMMON_ALIVE_LIMIT = 45
 
+    // ---- Phase 10: saving ----
+    /** Continue restores at least this fraction of the maximum health, so a checkpoint is never a death trap. */
+    const val CHECKPOINT_MIN_HEALTH_FRACTION = 0.5f
+    /** While paused the game redraws this many times a second (it only needs to keep the dimmed picture alive). */
+    const val PAUSED_FPS = 15
+
     // ---- Phase 9: screen shake ----
-    /** Set false to turn all camera shake off. */
-    const val SCREEN_SHAKE_ENABLED = true
+    // Shake, gore, damage numbers and the debug overlay are now options on the Settings screen (GameSettings).
     /** Shake "trauma" (0..1) lost per second; the offset grows with trauma squared. */
     const val SHAKE_DECAY = 2.4f
     /** Largest camera offset in pixels (at full trauma). */
@@ -117,9 +122,6 @@ object GameConfig {
     const val DECAL_CAPACITY = 96
     const val DECAL_LIFETIME = 28f
     const val DECAL_FADE_SECONDS = 6f
-    /** Bigger = more blood. 1 is the default. */
-    const val GORE_AMOUNT = 1f
-    const val SHOW_DAMAGE_NUMBERS = true
     const val FLOATING_TEXT_CAPACITY = 40
     const val DAMAGE_NUMBER_LIFE = 0.7f
     const val DAMAGE_NUMBER_RISE_SPEED = 70f
@@ -152,7 +154,4 @@ object GameConfig {
     const val GROAN_MAX_INTERVAL = 6f
     /** Below LOW_HEALTH_FRACTION a heartbeat plays; this is the gap at the lowest health. */
     const val HEARTBEAT_INTERVAL = 0.75f
-
-    /** Draws FPS, alive zombies and shot stats in the top-left corner. The real HUD is in Compose. */
-    const val SHOW_DEBUG_OVERLAY = false
 }

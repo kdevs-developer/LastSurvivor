@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: character screen and statistics (Phase 10) -->
+<resources>
+    <string name="character_title">CHARACTER</string>
+    <string name="character_outfit_heading">Outfit</string>
+    <string name="character_stats_heading">Statistics</string>
+
+    <string name="skin_survivor">Survivor</string>
+    <string name="skin_ranger">Ranger</string>
+    <string name="skin_scavenger">Scavenger</string>
+    <string name="skin_shadow">Shadow</string>
+    <string name="skin_selected">Selected</string>
+
+    <string name="stat_runs">Runs played</string>
+    <string name="stat_highest_wave">Best wave</string>
+    <string name="stat_kills">Zombies killed</string>
+    <string name="stat_bosses">Bosses defeated</string>
+    <string name="stat_accuracy">Accuracy</string>
+    <string name="stat_accuracy_format">%1$d%%</string>
+    <string name="stat_coins_earned">Coins earned</string>
+    <string name="stat_time">Time survived</string>
+    <string name="stat_time_hours_format">%1$d h %2$d min</string>
+    <string name="stat_time_minutes_format">%1$d min</string>
+    <string name="stat_time_none">0 min</string>
+    <string name="stat_number_format">%1$d</string>
+</resources>

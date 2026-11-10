@@ -15,7 +15,7 @@
     <string name="hud_banner_cleared">WAVE CLEARED</string>
     <string name="hud_banner_bonus_format">+%1$d coins</string>
 
-    <!-- Debug overlay (GameConfig.SHOW_DEBUG_OVERLAY) -->
+    <!-- Debug overlay (Settings screen: Show FPS and debug info) -->
     <string name="hud_fps">FPS %1$d</string>
     <string name="hud_debug_zombies_format">Zombies alive %1$d</string>
     <string name="hud_shots_format">Shots %1$d   Hits %2$d   Accuracy %3$d%%</string>
