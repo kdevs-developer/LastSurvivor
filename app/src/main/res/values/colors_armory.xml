@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: Armory screen. Shares the neon_* colours from colors_menu.xml (neon_green, neon_green_dim, neon_label, neon_title, neon_panel, neon_border); these are the Armory-only extras. -->
+<resources>
+    <color name="armory_background">#FF07060C</color>
+    <color name="armory_on_accent">#FF07060C</color>
+    <color name="armory_locked">#FF6A6A70</color>
+    <color name="armory_locked_border">#FF2A2A30</color>
+    <color name="armory_weapon_locked">#FF3A3A40</color>
+    <color name="armory_pip_off">#FF3A3A40</color>
+</resources>

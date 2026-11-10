@@ -1,8 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Module: weapons and the upgrade screen (weapon names are also used by the in-game HUD) -->
+<!-- Module: weapons and the Armory screen (weapon names are also used by the in-game HUD) -->
 <resources>
-    <string name="upgrades_title">WEAPON UPGRADES</string>
+    <string name="upgrades_title">ARMORY</string>
     <string name="upgrades_coins_format">%1$d</string>
+    <string name="armory_previous">Previous weapon</string>
+    <string name="armory_next">Next weapon</string>
 
     <string name="weapon_pistol">Pistol</string>
     <string name="weapon_smg">SMG</string>
