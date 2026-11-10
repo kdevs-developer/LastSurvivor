@@ -35,7 +35,9 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.game.engine.GameSurfaceView
+import com.kdevs.lastsurvivor.ui.rememberSoundManager
 import com.kdevs.lastsurvivor.ui.game.controls.GameControls
 import com.kdevs.lastsurvivor.ui.game.hud.GameHud
 
@@ -49,6 +51,8 @@ fun GameScreen(
     val gameView = remember { GameSurfaceView(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val hud by gameView.hud.collectAsStateWithLifecycle()
+    val soundEnabled by viewModel.soundEnabled.collectAsStateWithLifecycle()
+    val sounds = rememberSoundManager()
 
     // Equip the weapon chosen on the upgrades screen.
     LaunchedEffect(Unit) { gameView.equipWeapon(viewModel.loadEquippedWeapon()) }
@@ -107,7 +111,10 @@ fun GameScreen(
             GameHud(hud)
             GameControls(input = gameView.input)
             IconButton(
-                onClick = viewModel::pause,
+                onClick = {
+                    sounds.play(SoundEffect.UI_CLICK)
+                    viewModel.pause()
+                },
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .safeDrawingPadding()
@@ -120,13 +127,30 @@ fun GameScreen(
                 )
             }
         } else {
-            PauseOverlay(onResume = viewModel::resume, onQuit = quit)
+            PauseOverlay(
+                soundEnabled = soundEnabled,
+                onToggleSound = viewModel::toggleSound,
+                onResume = {
+                    sounds.play(SoundEffect.UI_CLICK)
+                    viewModel.resume()
+                },
+                onQuit = {
+                    sounds.play(SoundEffect.UI_CLICK)
+                    quit()
+                }
+            )
         }
     }
 }
 
 @Composable
-private fun PauseOverlay(onResume: () -> Unit, onQuit: () -> Unit) {
+private fun PauseOverlay(
+    soundEnabled: Boolean,
+    onToggleSound: () -> Unit,
+    onResume: () -> Unit,
+    onQuit: () -> Unit
+) {
+    val sounds = rememberSoundManager()
     Box(
         modifier = Modifier.fillMaxSize().safeDrawingPadding(),
         contentAlignment = Alignment.Center
@@ -141,6 +165,17 @@ private fun PauseOverlay(onResume: () -> Unit, onQuit: () -> Unit) {
                 color = colorResource(R.color.game_overlay_text)
             )
             Button(onClick = onResume, modifier = Modifier.width(220.dp)) { Text(stringResource(R.string.game_resume)) }
+            OutlinedButton(
+                onClick = {
+                    // the click is played before switching so it is heard when turning sound on, not when turning it off
+                    if (!soundEnabled) sounds.enabled = true
+                    sounds.play(SoundEffect.UI_CLICK)
+                    onToggleSound()
+                },
+                modifier = Modifier.width(220.dp)
+            ) {
+                Text(stringResource(if (soundEnabled) R.string.sound_on else R.string.sound_off))
+            }
             OutlinedButton(onClick = onQuit, modifier = Modifier.width(220.dp)) { Text(stringResource(R.string.game_quit_to_menu)) }
         }
     }

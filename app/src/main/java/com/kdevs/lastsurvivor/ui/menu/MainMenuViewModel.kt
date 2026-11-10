@@ -8,6 +8,7 @@ import com.kdevs.lastsurvivor.data.PlayerProgress
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class MainMenuViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -18,4 +19,15 @@ class MainMenuViewModel(app: Application) : AndroidViewModel(app) {
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = PlayerProgress()
     )
+
+    /** The Sound switch on the main menu. */
+    val soundEnabled: StateFlow<Boolean> = repository.soundEnabled.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = true
+    )
+
+    fun toggleSound() {
+        viewModelScope.launch { repository.setSoundEnabled(!soundEnabled.value) }
+    }
 }

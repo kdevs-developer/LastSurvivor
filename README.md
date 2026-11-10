@@ -14,8 +14,30 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 | 6 | Health, Damage and Wave Progression | Done |
 | 7 | Weapons and Upgrade System | Done |
 | 8 | Power-ups and Boss Fights | Done |
-| 9 | Graphics, Animations and Sound Effects | Next |
-| 10 | DataStore, Optimization and Testing | Pending |
+| 9 | Graphics, Animations and Sound Effects | Done |
+| 10 | DataStore, Optimization and Testing | Next |
+
+## Phase 9: Graphics, Animations and Sound Effects
+
+**Graphics** (`game/render/`, `game/effects/`)
+
+- **Sprites:** the player now holds the equipped weapon (pistol, SMG, shotgun and rifle each look different) and has a walk cycle. Every zombie type has a 4-frame walk cycle plus an attack frame and its own features: Runner is lean and leans forward, Tank has armour plates, Toxic has glowing pustules, the Brute has shoulder spikes and horns, the Brood Mother has a swollen abdomen with sacs and tentacles. Zombies flash white when hit, and zombies spawned mid-fight (the Mother's minions) grow and fade in.
+- **Real art is optional:** `SpriteAtlas` looks for a PNG in `app/src/main/assets/sprites/` first and falls back to the generated art in `PlaceholderSprites`. Names and sizes are in `assets/sprites/README.txt`. Replace sprites one file at a time with no code change.
+- **Effects:** pooled, allocation-free systems in `game/effects/`. `ParticleSystem` (blood, toxic goo, sparks, dust, smoke, fire, brass casings, pickup sparkles, max 480), `DecalField` (blood pools, goo and scorch marks that fade after 28 s, max 96) and `FloatingTexts` (damage numbers; hits in quick succession on one zombie are summed; the killing blow is bigger and gold, Double Damage hits are orange).
+- **Combat feel:** muzzle flash with flame, glow and white core sized per weapon, a shell casing and a puff of smoke per shot, blood spray on hits, a bigger burst and floor stain on kills, a hot flash, fire, smoke and scorch mark on grenade blasts, sparks when the shield blocks a hit.
+- **Camera shake:** when hurt, shotgun blasts, explosions, boss charge and roar, boss death and game over. Event shake fades with distance from the player. `GameWorld` exposes `shakeX/shakeY`; the renderer adds them to the camera.
+- **Atmosphere:** dark vignette around the screen, a pulsing red edge glow below 30% health, and 220 fixed floor decorations (cracks, stains, rubble, road marks).
+- **HUD animations (Compose):** the health bar glides with a pale trail showing recent damage and the heart beats at low health, the wave banner scales and fades in and out, the countdown number pops each second, kills/coins/grenade chips pop when they change, the boss bar glides, and the game over screen fades in with the title dropping in. All are read in the draw phase, so the HUD still does not recompose per frame.
+
+**Sound** (`game/audio/`)
+
+- **31 sound effects** in `res/raw/` as `sfx_<name>.wav`: four weapon shots, reload start and finish, hit, zombie death, two ambient groans, swing, player hurt, poison, shield, low-health heartbeat, pickups, grenade throw and explosion, boss roar / windup / charge / summon / death, wave start and clear, game over, and menu click / purchase / denied.
+- **They are synthesised, not recorded.** `tools/generate_sfx.py` (needs only numpy) creates every file, deterministically: `python tools/generate_sfx.py`. To use real recordings, drop files with the same names into `res/raw/` (`.wav` or `.ogg`; if you use another extension, update the matching `R.raw` line in `SoundManager.rawId`).
+- **How it works:** `SoundEffect` is one table of every effect (volume, minimum gap between plays, pitch variation, priority). `GameAudio` is the interface the engine talks to, so `GameWorld` stays free of Android types. `SoundManager` plays them through one `SoundPool` (14 streams) and rate-limits repeats so a shotgun blast or SMG burst cannot stack into noise.
+- **3D feel:** sounds in the world get quieter with distance (silent beyond 1500 units), pan left/right by where they are relative to the player, and big zombies sound deeper than small ones. Ambient groans come from nearby zombies every 2.5 to 6 s (more often with more zombies), and a heartbeat plays below 30% health, faster as health drops.
+- **Sound switch:** a speaker icon on the main menu and a Sound: On/Off button on the pause screen. The choice is saved in DataStore (`sound_enabled`, default on). There is no music yet.
+- **Tuning:** all numbers are in `GameConfig.kt` (Phase 9 sections: shake, particles, damage numbers, overlays, sound) and `SoundEffect.kt`. `SCREEN_SHAKE_ENABLED` turns shake off, `GORE_AMOUNT` scales blood and `SHOW_DAMAGE_NUMBERS` hides the numbers.
+- **Not verified in the build sandbox:** the `game/` package was compile-checked, but Gradle could not run there, so the Compose screens were checked by reading and the art and sounds have not been seen or heard on a device. Run the game and judge the sprites, the mix and the shake strength; the config values above are the first things to adjust.
 
 ## Phase 8: Power-ups and Boss Fights
 
@@ -40,7 +62,7 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 
 - **Boss HUD:** name and health bar under the wave number while a boss is alive (`ui/game/hud/GameHud.kt`).
 - **Saving:** nothing new is stored. Power-ups and grenades are per run.
-- Zombie sprites for the bosses are still the generated placeholders (bigger, with a coloured aura). Real art arrives in Phase 9.
+- Boss sprites are generated (bigger, with their own features and a coloured aura). Phase 9 made art swappable with PNGs.
 
 ## Phase 5: Shooting and Collision Detection
 
@@ -103,8 +125,9 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 | `strings_hud.xml` | In-game HUD and debug overlay |
 | `strings_upgrades.xml` | Weapons and the upgrade screen |
 | `strings_powerups.xml` | Power-ups, grenades and boss fights (HUD banner, boss names) |
+| `strings_audio.xml` | Sound switch |
 
-Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`.
+Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`, Phase 9 colors (particles, stains, sprite details, overlays, damage numbers) in `colors_effects.xml`.
 
 ## Project layout
 
@@ -112,11 +135,15 @@ Add new strings to the file of the module they belong to, and new colors under t
 game/engine    GameLoop, GameWorld, GameConfig, WaveManager, HudState, Collision, Camera, InputState, ObjectPool
 game/entities  Entity, Player, Zombie, ZombieType, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
 game/weapons   WeaponType, WeaponStats (+ UpgradeConfig), WeaponState, WeaponInventory
-game/render    GameRenderer, GameColors, PlaceholderSprites
+game/render    GameRenderer, GameColors, SpriteAtlas, PlaceholderSprites
+game/effects   ParticleSystem, DecalField, FloatingTexts
+game/audio     SoundEffect, GameAudio, SoundManager
+tools          generate_sfx.py (makes res/raw/*.wav)
 ui/menu        Main menu and placeholder screens
 ui/upgrades    UpgradesScreen, UpgradesViewModel
 ui/weapons     WeaponLabels (weapon and upgrade names for the UI)
 ui/game        GameScreen, GameOverOverlay, GameSessionViewModel, hud (GameHud), controls (joysticks and buttons)
 ui/theme       Compose Material 3 theme
-data           PlayerPrefsRepository (DataStore)
+ui             Sounds.kt (rememberSoundManager for UI click sounds)
+data           PlayerPrefsRepository (DataStore: progress, weapons, sound switch)
 ```

@@ -23,9 +23,12 @@ import androidx.compose.material.icons.filled.MonetizationOn
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -46,6 +49,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.audio.SoundEffect
+import com.kdevs.lastsurvivor.ui.rememberSoundManager
 
 @Composable
 fun MainMenuScreen(
@@ -57,6 +62,13 @@ fun MainMenuScreen(
     viewModel: MainMenuViewModel = viewModel()
 ) {
     val progress by viewModel.progress.collectAsStateWithLifecycle()
+    val soundEnabled by viewModel.soundEnabled.collectAsStateWithLifecycle()
+    val sounds = rememberSoundManager()
+    /** Wraps a button action so it also plays the click sound. */
+    fun clicked(action: () -> Unit): () -> Unit = {
+        sounds.play(SoundEffect.UI_CLICK)
+        action()
+    }
     val bloodRed = colorResource(R.color.blood_red)
     val coinGold = colorResource(R.color.coin_gold)
 
@@ -106,15 +118,34 @@ fun MainMenuScreen(
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                MenuButton(stringResource(R.string.menu_play), Icons.Filled.PlayArrow, primary = true, onClick = onPlay)
+                MenuButton(stringResource(R.string.menu_play), Icons.Filled.PlayArrow, primary = true, onClick = clicked(onPlay))
                 MenuButton(
                     stringResource(R.string.menu_continue), Icons.Filled.FastForward,
-                    onClick = onContinue
+                    onClick = clicked(onContinue)
                 )
-                MenuButton(stringResource(R.string.menu_weapon_upgrades), Icons.Filled.Build, onClick = onUpgrades)
-                MenuButton(stringResource(R.string.menu_character), Icons.Filled.Person, onClick = onCharacter)
-                MenuButton(stringResource(R.string.menu_settings), Icons.Filled.Settings, onClick = onSettings)
+                MenuButton(stringResource(R.string.menu_weapon_upgrades), Icons.Filled.Build, onClick = clicked(onUpgrades))
+                MenuButton(stringResource(R.string.menu_character), Icons.Filled.Person, onClick = clicked(onCharacter))
+                MenuButton(stringResource(R.string.menu_settings), Icons.Filled.Settings, onClick = clicked(onSettings))
             }
+        }
+
+        IconButton(
+            onClick = {
+                // play the click first when turning sound on, so it is heard; turning off is silent
+                if (!soundEnabled) sounds.enabled = true
+                sounds.play(SoundEffect.UI_CLICK)
+                viewModel.toggleSound()
+            },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .safeDrawingPadding()
+                .padding(8.dp)
+        ) {
+            Icon(
+                if (soundEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                contentDescription = stringResource(R.string.sound_toggle_description),
+                tint = MaterialTheme.colorScheme.onBackground
+            )
         }
     }
 }

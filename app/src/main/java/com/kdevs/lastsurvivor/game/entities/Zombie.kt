@@ -42,6 +42,19 @@ class Zombie : Entity(0f, 0f, 26f) {
     var hitFlash: Float = 0f        // Phase 5 draws a white flash while >0
     var deathTimer: Float = 0f      // counts down while the death animation plays
 
+    // ---- Phase 9: effects state ----
+    /** Seconds since spawning; the renderer fades and grows the zombie in over the first moments. */
+    var age: Float = 0f
+        private set
+    /** Damage taken since the last floating number was shown (GameWorld shows and clears it). */
+    var pendingDamage: Float = 0f
+    /** While >0 the zombie may not show another damage number, so rapid hits are summed. */
+    var numberCooldown: Float = 0f
+    /** One-shot cues for the sound and shake system; GameWorld reads them and sets them back to false. */
+    var windupJustStarted: Boolean = false
+    var chargeJustStarted: Boolean = false
+    var enrageJustStarted: Boolean = false
+
     // ---- boss state (unused by normal zombies) ----
     /** >0 while a boss telegraphs a charge: it stands still and the renderer draws a warning. */
     var windup: Float = 0f
@@ -88,6 +101,12 @@ class Zombie : Entity(0f, 0f, 26f) {
         attackAnim = 0f
         hitFlash = 0f
         deathTimer = 0f
+        age = 0f
+        pendingDamage = 0f
+        numberCooldown = 0f
+        windupJustStarted = false
+        chargeJustStarted = false
+        enrageJustStarted = false
         rotation = 0f
         active = true
     }
@@ -95,6 +114,7 @@ class Zombie : Entity(0f, 0f, 26f) {
     /** Returns true if this hit killed the zombie. */
     fun takeDamage(amount: Float): Boolean {
         if (!alive) return false
+        pendingDamage += if (amount < health) amount else health // overkill is not shown
         health -= amount
         hitFlash = 0.1f
         if (health <= 0f) {
@@ -112,6 +132,8 @@ class Zombie : Entity(0f, 0f, 26f) {
             deathTimer -= dt
             return
         }
+        age += dt
+        if (numberCooldown > 0f) numberCooldown -= dt
         if (attackTimer > 0f) attackTimer -= dt
         if (attackAnim > 0f) attackAnim -= dt
         if (hitFlash > 0f) hitFlash -= dt
@@ -185,6 +207,7 @@ class Zombie : Entity(0f, 0f, 26f) {
     private fun updateBossAbility(dt: Float) {
         if (!enraged && health <= maxHealth * GameConfig.BOSS_ENRAGE_FRACTION) {
             enraged = true
+            enrageJustStarted = true
             speed *= GameConfig.BOSS_ENRAGE_SPEED_MULT
         }
         if (windup > 0f || charging > 0f) return
@@ -192,7 +215,7 @@ class Zombie : Entity(0f, 0f, 26f) {
         if (abilityTimer > 0f) return
         abilityTimer = type.abilityInterval * (if (enraged) GameConfig.BOSS_ENRAGE_ABILITY_MULT else 1f)
         when (type) {
-            ZombieType.BRUTE -> windup = GameConfig.BOSS_CHARGE_WINDUP
+            ZombieType.BRUTE -> { windup = GameConfig.BOSS_CHARGE_WINDUP; windupJustStarted = true }
             ZombieType.MOTHER -> summonReady = true
             else -> Unit
         }
@@ -204,6 +227,7 @@ class Zombie : Entity(0f, 0f, 26f) {
         chargeDirX = if (dist > 0.001f) dx * inv else 1f
         chargeDirY = dy * inv
         charging = GameConfig.BOSS_CHARGE_SECONDS
+        chargeJustStarted = true
         chargeHit = false
     }
 }

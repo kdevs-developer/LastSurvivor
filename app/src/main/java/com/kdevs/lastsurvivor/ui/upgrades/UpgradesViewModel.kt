@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kdevs.lastsurvivor.data.PlayerPrefsRepository
+import com.kdevs.lastsurvivor.game.audio.SoundEffect
+import com.kdevs.lastsurvivor.game.audio.SoundManager
 import com.kdevs.lastsurvivor.game.weapons.UpgradeTrack
 import com.kdevs.lastsurvivor.game.weapons.WeaponInventory
 import com.kdevs.lastsurvivor.game.weapons.WeaponType
@@ -25,6 +27,7 @@ class UpgradesViewModel(app: Application) : AndroidViewModel(app) {
 
     private val repository = PlayerPrefsRepository(app)
     private val selected = MutableStateFlow(WeaponType.PISTOL)
+    private val sounds = SoundManager.get(app)
 
     val state: StateFlow<UpgradesUiState> = combine(
         repository.progress, repository.weapons, selected
@@ -37,17 +40,26 @@ class UpgradesViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { selected.value = repository.weapons.first().equipped }
     }
 
-    fun select(type: WeaponType) { selected.value = type }
+    fun select(type: WeaponType) {
+        sounds.play(SoundEffect.UI_CLICK)
+        selected.value = type
+    }
 
     fun unlock(type: WeaponType) {
-        viewModelScope.launch { repository.unlockWeapon(type) }
+        viewModelScope.launch { purchaseSound(repository.unlockWeapon(type)) }
     }
 
     fun equip(type: WeaponType) {
+        sounds.play(SoundEffect.UI_CLICK)
         viewModelScope.launch { repository.equipWeapon(type) }
     }
 
     fun upgrade(type: WeaponType, track: UpgradeTrack) {
-        viewModelScope.launch { repository.upgradeWeapon(type, track) }
+        viewModelScope.launch { purchaseSound(repository.upgradeWeapon(type, track)) }
+    }
+
+    /** A cash-register ding when a purchase went through, a buzz when it was refused. */
+    private fun purchaseSound(success: Boolean) {
+        sounds.play(if (success) SoundEffect.UI_PURCHASE else SoundEffect.UI_DENIED)
     }
 }

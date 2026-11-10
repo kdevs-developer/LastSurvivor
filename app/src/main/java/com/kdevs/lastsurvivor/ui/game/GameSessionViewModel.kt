@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import com.kdevs.lastsurvivor.data.PlayerPrefsRepository
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -21,6 +23,14 @@ class GameSessionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _paused = MutableStateFlow(false)
     val paused: StateFlow<Boolean> = _paused.asStateFlow()
+
+    /** The Sound switch shown on the pause screen. */
+    val soundEnabled: StateFlow<Boolean> =
+        repository.soundEnabled.stateIn(viewModelScope, SharingStarted.Eagerly, true)
+
+    fun toggleSound() {
+        viewModelScope.launch { repository.setSoundEnabled(!soundEnabled.value) }
+    }
 
     private var runSaved = false
 

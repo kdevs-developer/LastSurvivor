@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.SurfaceHolder
 import android.view.SurfaceView
+import com.kdevs.lastsurvivor.game.audio.SoundManager
 import com.kdevs.lastsurvivor.game.render.GameRenderer
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +38,7 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     init {
         holder.addCallback(this)
         isFocusable = true
+        world.audio = SoundManager.get(context)
     }
 
     fun setPaused(value: Boolean) {

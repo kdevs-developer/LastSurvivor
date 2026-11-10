@@ -6,10 +6,17 @@ import android.graphics.BitmapShader
 import android.graphics.Canvas
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffColorFilter
+import android.graphics.RadialGradient
 import android.graphics.Shader
+import android.graphics.Typeface
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.GameWorld
+import com.kdevs.lastsurvivor.game.effects.FloatingTexts
+import com.kdevs.lastsurvivor.game.effects.ParticleSystem
 import com.kdevs.lastsurvivor.game.entities.Bullet
 import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
 import com.kdevs.lastsurvivor.game.entities.Grenade
@@ -23,6 +30,7 @@ import kotlin.math.cos
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 /**
  * Draws a GameWorld onto a Canvas. Allocation-free in render(): every Paint, Matrix and
@@ -34,20 +42,11 @@ class GameRenderer(context: Context) {
     private val resources = context.resources
     private val colors = GameColors(context)
 
-    private val floorTile: Bitmap = PlaceholderSprites.floorTile(128, colors)
-    private val playerSprite: Bitmap = PlaceholderSprites.player(96, colors)
-
-    /** zombieSprites[type.ordinal][frame]: frame 0/1 walk, 2 attack. */
-    private val zombieSprites: Array<Array<Bitmap>> = Array(ZombieType.entries.size) { t ->
-        val type = ZombieType.entries[t]
-        val size = (type.radius * 3.2f).toInt()
-        Array(3) { frame ->
-            PlaceholderSprites.zombie(size, colors.zombieSkin[t], colors.zombieCloth[t], colors.zombieGlow[t], frame, colors)
-        }
-    }
+    /** All bitmaps: PNGs from assets/sprites/ where present, generated art otherwise. */
+    private val sprites = SpriteAtlas(context, colors)
 
     private val floorPaint = Paint().apply {
-        shader = BitmapShader(floorTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+        shader = BitmapShader(sprites.floorTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     }
     private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.shadow }
@@ -114,6 +113,53 @@ class GameRenderer(context: Context) {
     }
     private val enragedPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.bossEnraged }
 
+    // Phase 9: particles, damage numbers, hit flash, vignette, muzzle flash
+    private val particlePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val sparkPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { strokeCap = Paint.Cap.ROUND }
+    private val numberPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT_BOLD
+        textAlign = Paint.Align.CENTER
+    }
+    private val numberOutlinePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        typeface = Typeface.DEFAULT_BOLD
+        textAlign = Paint.Align.CENTER
+        color = colors.damageNumberOutline
+        style = Paint.Style.STROKE
+        strokeWidth = 5f
+        strokeJoin = Paint.Join.ROUND
+    }
+    private val numberStrings = Array(1000) { it.toString() }
+    /** Draws a sprite tinted solid white (the colour filter keeps the sprite's silhouette). */
+    private val flashPaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG).apply {
+        colorFilter = PorterDuffColorFilter(colors.hitFlash, PorterDuff.Mode.SRC_ATOP)
+    }
+    private val vignettePaint = Paint()
+    private val lowHealthPaint = Paint()
+    private var vignetteW = 0
+    private var vignetteH = 0
+    private val muzzleCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.muzzleCore }
+    private val muzzleGlowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.muzzleGlow }
+    private val explosionCorePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.explosionCore }
+    private val flamePath = Path()
+
+    // floor decoration: fixed positions from a fixed seed, so the map looks the same every run
+    private val decorX = FloatArray(DECOR_COUNT)
+    private val decorY = FloatArray(DECOR_COUNT)
+    private val decorRot = FloatArray(DECOR_COUNT)
+    private val decorScale = FloatArray(DECOR_COUNT)
+    private val decorKind = IntArray(DECOR_COUNT)
+
+    init {
+        val rnd = Random(7)
+        for (i in 0 until DECOR_COUNT) {
+            decorX[i] = rnd.nextFloat() * GameWorld.WIDTH
+            decorY[i] = rnd.nextFloat() * GameWorld.HEIGHT
+            decorRot[i] = rnd.nextFloat() * 360f
+            decorScale[i] = 0.8f + rnd.nextFloat() * 0.8f
+            decorKind[i] = rnd.nextInt(PlaceholderSprites.DECOR_KINDS)
+        }
+    }
+
     private val matrix = Matrix()
 
     // HUD strings are rebuilt only when the numbers behind them change.
@@ -131,10 +177,13 @@ class GameRenderer(context: Context) {
         canvas.drawColor(colors.clear)
 
         canvas.save()
-        canvas.translate(-world.camera.x, -world.camera.y)
+        // the camera position plus this tick's shake offset
+        canvas.translate(-world.camera.x + world.shakeX, -world.camera.y + world.shakeY)
 
-        // floor + map border
+        // floor, decoration, stains and map border
         canvas.drawRect(0f, 0f, GameWorld.WIDTH, GameWorld.HEIGHT, floorPaint)
+        drawDecor(canvas, world)
+        drawDecals(canvas, world)
         canvas.drawRect(0f, 0f, GameWorld.WIDTH, GameWorld.HEIGHT, boundsPaint)
 
         drawPowerUps(canvas, world)
@@ -145,10 +194,13 @@ class GameRenderer(context: Context) {
         drawPlayer(canvas, world)
         drawExplosions(canvas, world)
         drawImpacts(canvas, world)
+        drawParticles(canvas, world)
         drawReloadBar(canvas, world)
+        if (GameConfig.SHOW_DAMAGE_NUMBERS) drawDamageNumbers(canvas, world)
 
         canvas.restore()
 
+        drawVignette(canvas, world)
         drawDamageFeedback(canvas, world)
         if (GameConfig.SHOW_DEBUG_OVERLAY) drawDebugOverlay(canvas, world, fps)
 
@@ -178,11 +230,13 @@ class GameRenderer(context: Context) {
         val p = world.player
         canvas.drawCircle(p.x + 6f, p.y + 8f, p.radius, shadowPaint)
         if (p.damageBoost) canvas.drawCircle(p.x, p.y, p.radius + 10f, auraPaint)
-        val half = playerSprite.width / 2f
+        val weaponType = world.weapon.stats.type
+        val sprite = sprites.playerSprites[weaponType.ordinal][playerFrame(world)]
+        val half = sprite.width / 2f
         matrix.reset()
         matrix.postRotate(Math.toDegrees(p.rotation.toDouble()).toFloat(), half, half)
         matrix.postTranslate(p.x - half, p.y - half)
-        canvas.drawBitmap(playerSprite, matrix, spritePaint)
+        canvas.drawBitmap(sprite, matrix, spritePaint)
         // shield bubble; it blinks during its last two seconds
         if (p.shielded && (p.shieldTimer > 2f || ((p.shieldTimer * 8f).toInt() and 1) == 0)) {
             canvas.drawCircle(p.x, p.y, p.radius + 16f, bubblePaint)
@@ -198,9 +252,24 @@ class GameRenderer(context: Context) {
                 p.x + cosR * 420f, p.y + sinR * 420f, aimPaint
             )
         }
-        // muzzle flash for a few frames after each real shot
+        // muzzle flash for a few frames after each real shot: a warm glow, a flame and a white core
         if (p.muzzleFlash > 0f) {
-            canvas.drawCircle(p.x + cosR * 52f, p.y + sinR * 52f, 9f, firePaint)
+            val k = (p.muzzleFlash / GameConfig.MUZZLE_FLASH_SECONDS).coerceIn(0f, 1f)
+            val tip = weaponType.muzzleOffset
+            val big = if (weaponType.pellets >= 4) 1.6f else 1f
+            val tx = p.x + cosR * tip
+            val ty = p.y + sinR * tip
+            muzzleGlowPaint.alpha = (110 * k).toInt()
+            canvas.drawCircle(tx, ty, 90f * big, muzzleGlowPaint)
+            val len = 34f * big * (0.6f + 0.4f * k)
+            val wide = 9f * big
+            flamePath.reset()
+            flamePath.moveTo(tx - sinR * wide, ty + cosR * wide)
+            flamePath.lineTo(tx + cosR * len, ty + sinR * len)
+            flamePath.lineTo(tx + sinR * wide, ty - cosR * wide)
+            flamePath.close()
+            canvas.drawPath(flamePath, firePaint)
+            canvas.drawCircle(tx, ty, 8f * big, muzzleCorePaint)
         }
     }
 
@@ -304,6 +373,11 @@ class GameRenderer(context: Context) {
             explosionRingPaint.alpha = (255 * (1f - t)).toInt()
             explosionRingPaint.strokeWidth = 4f + 10f * (1f - t)
             canvas.drawCircle(e.x, e.y, e.radius * grow, explosionRingPaint)
+            if (t < 0.3f) { // bright white-hot flash at the very start
+                val f = 1f - t / 0.3f
+                explosionCorePaint.alpha = (255 * f).toInt()
+                canvas.drawCircle(e.x, e.y, e.radius * (0.25f + 0.2f * f), explosionCorePaint)
+            }
         }
     }
 
@@ -373,11 +447,11 @@ class GameRenderer(context: Context) {
 
     private fun drawZombie(canvas: Canvas, z: Zombie) {
         val frame = when (z.state) {
-            ZombieState.ATTACK -> 2
-            ZombieState.WALK -> (z.animTime * 3f).toInt() and 1
+            ZombieState.ATTACK -> ATTACK_FRAME
+            ZombieState.WALK -> (z.animTime * (3f + z.speed / 40f)).toInt() and 3 // faster zombies step faster
             else -> 0
         }
-        val bmp = zombieSprites[z.type.ordinal][frame]
+        val bmp = sprites.zombieSprites[z.type.ordinal][frame]
         val half = bmp.width / 2f
 
         val sway = if (z.state == ZombieState.WALK) sin(z.animTime * 9f) * 5f else 0f
@@ -388,8 +462,9 @@ class GameRenderer(context: Context) {
         matrix.postTranslate(z.x - half, z.y - half)
 
         if (z.state == ZombieState.DEAD) {
-            // death animation: shrink and fade out
+            // death animation: collapse with a little twist, shrink and fade out
             val t = (z.deathTimer / Zombie.DEATH_SECONDS).coerceIn(0f, 1f)
+            matrix.postRotate((1f - t) * 35f, z.x, z.y)
             matrix.postScale(0.7f + 0.3f * t, 0.7f + 0.3f * t, z.x, z.y)
             spritePaint.alpha = (255 * t).toInt()
             canvas.drawBitmap(bmp, matrix, spritePaint)
@@ -399,7 +474,20 @@ class GameRenderer(context: Context) {
 
         canvas.drawCircle(z.x + 4f, z.y + 6f, z.radius, shadowPaint)
         if (z.enraged) canvas.drawCircle(z.x, z.y, z.radius + 14f, enragedPaint)
+
+        // freshly spawned zombies (e.g. a Brood Mother's minions) grow and fade in
+        val spawn = (z.age / GameConfig.ZOMBIE_SPAWN_ANIM_SECONDS).coerceIn(0f, 1f)
+        if (spawn < 1f) {
+            val scale = 0.6f + 0.4f * spawn
+            matrix.postScale(scale, scale, z.x, z.y)
+            spritePaint.alpha = (255 * spawn).toInt()
+        }
         canvas.drawBitmap(bmp, matrix, spritePaint)
+        spritePaint.alpha = 255
+        if (z.hitFlash > 0f) { // brief white flash where a bullet landed
+            flashPaint.alpha = (200 * (z.hitFlash / HIT_FLASH_SECONDS)).toInt().coerceIn(0, 255)
+            canvas.drawBitmap(bmp, matrix, flashPaint)
+        }
 
         // health bar once damaged
         if (z.health < z.maxHealth) {
@@ -441,7 +529,189 @@ class GameRenderer(context: Context) {
         if (pl.grenadeFlash > 0f) { canvas.drawText(grenadeText, 24f, line, debugPaint) }
     }
 
+
+    // ---------------------------------------------------------------- Phase 9 drawing
+
+    /** Floor decoration scattered over the map; positions are fixed (seeded), only visible ones are drawn. */
+    private fun drawDecor(canvas: Canvas, world: GameWorld) {
+        val left = world.camera.x - DECOR_SIZE_MAX
+        val top = world.camera.y - DECOR_SIZE_MAX
+        val right = world.camera.x + world.viewportWidth + DECOR_SIZE_MAX
+        val bottom = world.camera.y + world.viewportHeight + DECOR_SIZE_MAX
+        var i = 0
+        while (i < DECOR_COUNT) {
+            val x = decorX[i]
+            val y = decorY[i]
+            if (x >= left && x <= right && y >= top && y <= bottom) {
+                val bmp = sprites.decor[decorKind[i]]
+                val half = bmp.width / 2f
+                matrix.reset()
+                matrix.postRotate(decorRot[i], half, half)
+                matrix.postScale(decorScale[i], decorScale[i], half, half)
+                matrix.postTranslate(x - half, y - half)
+                canvas.drawBitmap(bmp, matrix, spritePaint)
+            }
+            i++
+        }
+    }
+
+    /** Blood pools, goo and scorch marks lying on the floor, fading out as they age. */
+    private fun drawDecals(canvas: Canvas, world: GameWorld) {
+        val d = world.decals
+        val left = world.camera.x - 160f
+        val top = world.camera.y - 160f
+        val right = world.camera.x + world.viewportWidth + 160f
+        val bottom = world.camera.y + world.viewportHeight + 160f
+        var i = 0
+        while (i < d.count) {
+            val a = d.alpha(i)
+            if (a > 0f && d.x[i] >= left && d.x[i] <= right && d.y[i] >= top && d.y[i] <= bottom) {
+                val bmp = sprites.decal(d.kind[i], d.variant[i])
+                val half = bmp.width / 2f
+                val scale = d.size[i] / bmp.width
+                matrix.reset()
+                matrix.postRotate(Math.toDegrees(d.rot[i].toDouble()).toFloat(), half, half)
+                matrix.postScale(scale, scale, half, half)
+                matrix.postTranslate(d.x[i] - half, d.y[i] - half)
+                spritePaint.alpha = (255 * a).toInt()
+                canvas.drawBitmap(bmp, matrix, spritePaint)
+            }
+            i++
+        }
+        spritePaint.alpha = 255
+    }
+
+    /** Blood, sparks, smoke, fire, casings and pickup sparkles. Each kind has its own look. */
+    private fun drawParticles(canvas: Canvas, world: GameWorld) {
+        val ps = world.particles
+        var i = 0
+        while (i < ps.count) {
+            val t = 1f - ps.life[i] / ps.maxLife[i] // 0 = just born, 1 = about to vanish
+            val x = ps.x[i]
+            val y = ps.y[i]
+            val s = ps.size[i]
+            when (ps.kind[i]) {
+                ParticleSystem.BLOOD, ParticleSystem.GOO -> {
+                    particlePaint.color = if (ps.kind[i] == ParticleSystem.BLOOD) colors.particleBlood else colors.particleGoo
+                    particlePaint.alpha = (255 * (1f - t * t)).toInt()
+                    canvas.drawCircle(x, y, s * (1f - 0.4f * t), particlePaint)
+                }
+                ParticleSystem.SPARK -> {
+                    sparkPaint.color = colors.particleSpark
+                    sparkPaint.alpha = (255 * (1f - t)).toInt()
+                    sparkPaint.strokeWidth = s
+                    canvas.drawLine(x, y, x - ps.vx[i] * 0.035f, y - ps.vy[i] * 0.035f, sparkPaint)
+                }
+                ParticleSystem.DUST -> {
+                    particlePaint.color = colors.particleDust
+                    particlePaint.alpha = (110 * (1f - t)).toInt()
+                    canvas.drawCircle(x, y, s * (1f + 1.5f * t), particlePaint)
+                }
+                ParticleSystem.SMOKE -> {
+                    particlePaint.color = colors.particleSmoke
+                    particlePaint.alpha = (120 * (1f - t)).toInt()
+                    canvas.drawCircle(x, y, s * (1f + 1.8f * t), particlePaint)
+                }
+                ParticleSystem.FIRE -> {
+                    particlePaint.color = colors.particleFire
+                    particlePaint.alpha = (255 * (1f - t)).toInt()
+                    canvas.drawCircle(x, y, s * (1f - 0.7f * t), particlePaint)
+                }
+                ParticleSystem.CASING -> {
+                    particlePaint.color = colors.particleCasing
+                    particlePaint.alpha = (255 * (1f - t * t * t)).toInt()
+                    canvas.save()
+                    canvas.rotate(Math.toDegrees(ps.rot[i].toDouble()).toFloat(), x, y)
+                    canvas.drawRect(x - s, y - s * 0.45f, x + s, y + s * 0.45f, particlePaint)
+                    canvas.restore()
+                }
+                else -> { // PICKUP sparkle in the power-up's colour
+                    particlePaint.color = colors.powerUp[ps.tag[i].coerceIn(0, colors.powerUp.size - 1)]
+                    particlePaint.alpha = (255 * (1f - t)).toInt()
+                    canvas.drawCircle(x, y, s * (1f - 0.6f * t), particlePaint)
+                }
+            }
+            i++
+        }
+        particlePaint.alpha = 255
+    }
+
+    /** Damage numbers: pop in a little larger, float up, fade out. */
+    private fun drawDamageNumbers(canvas: Canvas, world: GameWorld) {
+        val ft = world.floatingTexts
+        var i = 0
+        while (i < ft.count) {
+            val t = ft.age[i] / GameConfig.DAMAGE_NUMBER_LIFE
+            val kind = ft.kind[i]
+            val base = if (kind == FloatingTexts.KILL) 40f else 30f
+            val pop = if (t < 0.2f) 1f + 0.5f * (1f - t / 0.2f) else 1f
+            val text = numberText(ft.value[i])
+            val alpha = (255 * (1f - t * t)).toInt()
+            numberPaint.textSize = base * pop
+            numberOutlinePaint.textSize = base * pop
+            numberOutlinePaint.alpha = (alpha * 0.8f).toInt()
+            numberPaint.color = when (kind) {
+                FloatingTexts.BOOSTED -> colors.damageNumberBoosted
+                FloatingTexts.KILL -> colors.damageNumberKill
+                else -> colors.damageNumber
+            }
+            numberPaint.alpha = alpha
+            canvas.drawText(text, ft.x[i], ft.y[i], numberOutlinePaint)
+            canvas.drawText(text, ft.x[i], ft.y[i], numberPaint)
+            i++
+        }
+    }
+
+    private fun numberText(v: Int): String {
+        val i = if (v < 0) 0 else if (v >= numberStrings.size) numberStrings.size - 1 else v
+        return numberStrings[i]
+    }
+
+    /** Dark screen edges, plus a pulsing red edge glow when health is low. Screen space, after the world. */
+    private fun drawVignette(canvas: Canvas, world: GameWorld) {
+        val w = canvas.width
+        val h = canvas.height
+        if (w != vignetteW || h != vignetteH) {
+            vignetteW = w
+            vignetteH = h
+            val radius = sqrt((w * w + h * h).toFloat()) / 2f
+            val cx = w / 2f
+            val cy = h / 2f
+            val stops = floatArrayOf(0.55f, 1f)
+            vignettePaint.shader = RadialGradient(
+                cx, cy, radius, intArrayOf(colors.vignette and 0x00FFFFFF, colors.vignette), stops, Shader.TileMode.CLAMP
+            )
+            lowHealthPaint.shader = RadialGradient(
+                cx, cy, radius, intArrayOf(colors.lowHealthVignette and 0x00FFFFFF, colors.lowHealthVignette), stops, Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), vignettePaint)
+
+        val p = world.player
+        val line = p.maxHealth * GameConfig.LOW_HEALTH_FRACTION
+        if (p.alive && p.health < line) {
+            val severity = 1f - p.health / line // 0 just below the line .. 1 nearly dead
+            val hz = GameConfig.LOW_HEALTH_PULSE_HZ * (0.5f + 0.5f * severity)
+            val pulse = 0.5f + 0.5f * sin(world.time * hz * 6.2832f)
+            lowHealthPaint.alpha = (255 * (0.35f + 0.45f * severity) * (0.55f + 0.45f * pulse)).toInt().coerceIn(0, 255)
+            canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), lowHealthPaint)
+        }
+    }
+
+    /** Which player sprite frame to show: standing, or the two walk steps alternating. */
+    private fun playerFrame(world: GameWorld): Int {
+        if (!world.player.moving) return 0
+        val rate = if (world.player.sprinting) 14f else 9f
+        return PLAYER_WALK_FRAMES[(world.time * rate).toInt() and 3]
+    }
+
     private companion object {
         const val TRACER_LENGTH = 32f
+        const val ATTACK_FRAME = SpriteAtlas.ZOMBIE_FRAMES - 1
+        const val HIT_FLASH_SECONDS = 0.1f // matches Zombie.takeDamage
+        const val DECOR_COUNT = 220
+        const val DECOR_SIZE_MAX = 160f
+        /** The four ticks of a walk cycle: step, stand, other step, stand. */
+        val PLAYER_WALK_FRAMES = intArrayOf(1, 0, 2, 0)
     }
 }

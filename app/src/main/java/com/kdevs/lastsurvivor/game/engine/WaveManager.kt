@@ -1,5 +1,6 @@
 package com.kdevs.lastsurvivor.game.engine
 
+import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import kotlin.math.cos
 import kotlin.math.max
@@ -65,7 +66,13 @@ class WaveManager(private val world: GameWorld) {
         val normalCount = min(GameConfig.WAVE_BASE_COUNT + GameConfig.WAVE_COUNT_PER_WAVE * wave, GameConfig.WAVE_MAX_COUNT)
         toSpawn = if (isBossWave) (normalCount * GameConfig.BOSS_WAVE_ESCORT_FRACTION).toInt() else normalCount
         spawnTimer = 0.5f
-        if (isBossWave) spawnBoss()
+        if (isBossWave) {
+            spawnBoss()
+            world.playSound(SoundEffect.BOSS_ROAR)
+            world.addShake(GameConfig.SHAKE_ON_BOSS_ROAR)
+        } else {
+            world.playSound(SoundEffect.WAVE_START)
+        }
     }
 
     /** Bosses alternate through the boss types and get tougher each time. */
@@ -109,6 +116,7 @@ class WaveManager(private val world: GameWorld) {
         clearedBonus = GameConfig.WAVE_CLEAR_COINS_PER_WAVE * wave *
             (if (isBossWave) GameConfig.BOSS_CLEAR_COIN_MULT else 1)
         world.addCoins(clearedBonus)
+        world.playSound(SoundEffect.WAVE_CLEAR)
         wave++
         phase = WavePhase.COUNTDOWN
         countdown = GameConfig.WAVE_COUNTDOWN

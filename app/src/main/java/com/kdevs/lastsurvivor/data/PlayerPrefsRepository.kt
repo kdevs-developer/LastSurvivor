@@ -3,6 +3,7 @@ package com.kdevs.lastsurvivor.data
 import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.intPreferencesKey
@@ -37,6 +38,7 @@ class PlayerPrefsRepository(private val context: Context) {
         val HIGHEST_WAVE = intPreferencesKey("highest_wave")
         val UNLOCKED_WEAPONS = stringSetPreferencesKey("unlocked_weapons")
         val EQUIPPED_WEAPON = stringPreferencesKey("equipped_weapon")
+        val SOUND_ENABLED = booleanPreferencesKey("sound_enabled")
         fun level(type: WeaponType, track: UpgradeTrack) =
             intPreferencesKey("weapon_${type.name.lowercase()}_${track.name.lowercase()}")
     }
@@ -53,6 +55,17 @@ class PlayerPrefsRepository(private val context: Context) {
         context.dataStore.edit {
             if (wave > (it[Keys.HIGHEST_WAVE] ?: 0)) it[Keys.HIGHEST_WAVE] = wave
         }
+    }
+
+    // ---------------- Sound (Phase 9) ----------------
+
+    /** The sound effects switch (menu and pause screen). On by default. */
+    val soundEnabled: Flow<Boolean> = context.dataStore.data
+        .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
+        .map { it[Keys.SOUND_ENABLED] ?: true }
+
+    suspend fun setSoundEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.SOUND_ENABLED] = enabled }
     }
 
     // ---------------- Weapons (Phase 7) ----------------

@@ -1,5 +1,10 @@
 package com.kdevs.lastsurvivor.game.engine
 
+import com.kdevs.lastsurvivor.game.audio.GameAudio
+import com.kdevs.lastsurvivor.game.audio.SoundEffect
+import com.kdevs.lastsurvivor.game.effects.DecalField
+import com.kdevs.lastsurvivor.game.effects.FloatingTexts
+import com.kdevs.lastsurvivor.game.effects.ParticleSystem
 import com.kdevs.lastsurvivor.game.entities.Bullet
 import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
 import com.kdevs.lastsurvivor.game.entities.Grenade
@@ -14,8 +19,11 @@ import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.atan2
 import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -75,6 +83,28 @@ class GameWorld {
     private val pendingWeapon = AtomicReference<WeaponStats?>(null)
     private val restartRequested = AtomicBoolean(false)
 
+    // ---- Phase 9: sound and visual effects ----
+    /** Receives sound requests. Set by GameSurfaceView; null means silent (for tests). */
+    @Volatile var audio: GameAudio? = null
+
+    val particles = ParticleSystem(GameConfig.PARTICLE_CAPACITY)
+    val decals = DecalField(GameConfig.DECAL_CAPACITY)
+    val floatingTexts = FloatingTexts(GameConfig.FLOATING_TEXT_CAPACITY)
+
+    /** Simulated seconds since the world was created; drives looping animations in the renderer. */
+    var time: Float = 0f
+        private set
+
+    /** Camera shake offset in pixels for this tick; the renderer adds it to the camera position. */
+    var shakeX: Float = 0f
+        private set
+    var shakeY: Float = 0f
+        private set
+    private var trauma = 0f
+    private var groanTimer = GameConfig.GROAN_MAX_INTERVAL
+    private var heartbeatTimer = 0f
+    private var wasReloading = false
+
     /** What the Compose HUD shows. Written by the game thread, collected by the UI. */
     val hud = MutableStateFlow(HudState())
 
@@ -129,6 +159,15 @@ class GameWorld {
         explosions.clear()
         grenadeCount = GameConfig.GRENADE_START_COUNT
         boss = null
+        particles.clear()
+        decals.clear()
+        floatingTexts.clear()
+        trauma = 0f
+        shakeX = 0f
+        shakeY = 0f
+        groanTimer = GameConfig.GROAN_MAX_INTERVAL
+        heartbeatTimer = 0f
+        wasReloading = false
 
         player.reset(WIDTH / 2f, HEIGHT / 2f)
         waves.reset()
@@ -142,9 +181,10 @@ class GameWorld {
     }
 
     fun update(dt: Float) {
-        pendingWeapon.getAndSet(null)?.let { weapon.equip(it) }
+        pendingWeapon.getAndSet(null)?.let { weapon.equip(it); wasReloading = false }
         if (restartRequested.getAndSet(false)) reset()
         if (gameOver) {
+            updateEffects(dt) // blood, smoke and stains keep moving behind the game over screen
             publishHud()
             return
         }
@@ -155,6 +195,7 @@ class GameWorld {
         player.y = player.y.coerceIn(player.radius, HEIGHT - player.radius)
 
         updateShooting(dt)
+        syncReloadSounds()
 
         waves.update(dt)
         updateZombies(dt)
@@ -167,13 +208,18 @@ class GameWorld {
         updateGrenades(dt)
         updateExplosions(dt)
         updatePowerUps(dt)
+        flushDamageNumbers()
         removeFinishedZombies()
 
         if (!player.alive) {
             gameOver = true
             player.firing = false
+            onPlayerDied()
+        } else {
+            updateAmbience(dt)
         }
 
+        updateEffects(dt)
         camera.follow(player.x, player.y, viewportWidth, viewportHeight, WIDTH, HEIGHT)
         publishHud()
     }
@@ -200,6 +246,7 @@ class GameWorld {
         val damage = if (p.damageBoost) s.damage * GameConfig.DOUBLE_DAMAGE_MULT else s.damage
         p.muzzleFlash = GameConfig.MUZZLE_FLASH_SECONDS
         shotsFired += s.pellets
+        onShotFired(s)
 
         // Start at the player's centre: the sprite is drawn on top, so the bullet appears to
         // leave the barrel, and no zombie touching the player can be skipped.
@@ -221,7 +268,10 @@ class GameWorld {
             b.update(dt)
             if (b.active) {
                 if (b.x < 0f || b.x > WIDTH || b.y < 0f || b.y > HEIGHT) {
-                    spawnImpact(b.x.coerceIn(0f, WIDTH), b.y.coerceIn(0f, HEIGHT), onZombie = false)
+                    val hx = b.x.coerceIn(0f, WIDTH)
+                    val hy = b.y.coerceIn(0f, HEIGHT)
+                    spawnImpact(hx, hy, onZombie = false)
+                    wallHitEffects(hx, hy, b.dirX, b.dirY)
                     b.active = false
                 } else {
                     hitFirstZombie(b)
@@ -258,10 +308,12 @@ class GameWorld {
         val hitX = b.prevX + (b.x - b.prevX) * bestT
         val hitY = b.prevY + (b.y - b.prevY) * bestT
         shotsHit++
-        if (z.takeDamage(b.damage)) registerKill(z)
+        val killed = z.takeDamage(b.damage)
+        if (killed) registerKill(z, b.dirX, b.dirY)
         z.x += b.dirX * GameConfig.HIT_KNOCKBACK
         z.y += b.dirY * GameConfig.HIT_KNOCKBACK
         spawnImpact(hitX, hitY, onZombie = true)
+        hitEffects(z, hitX, hitY, b.dirX, b.dirY, killed)
         b.registerHit(z) // the bullet ends here unless it can pierce
     }
 
@@ -307,6 +359,7 @@ class GameWorld {
         if (grenadeCount <= 0) return
         grenadeCount--
         player.grenadeFlash = FLASH_SECONDS
+        playSound(SoundEffect.GRENADE_THROW)
         val g = grenadePool.obtain()
         val a = player.rotation
         g.launch(player.x + cos(a) * GRENADE_SPAWN_OFFSET, player.y + sin(a) * GRENADE_SPAWN_OFFSET, a)
@@ -337,6 +390,7 @@ class GameWorld {
         val e = explosionPool.obtain()
         e.start(cx, cy, GameConfig.GRENADE_BLAST_RADIUS)
         explosions.add(e)
+        explosionEffects(cx, cy)
 
         var i = 0
         while (i < zombies.size) {
@@ -351,7 +405,9 @@ class GameWorld {
             val d = sqrt(d2)
             val t = (d / reach).coerceIn(0f, 1f)
             val damage = GameConfig.GRENADE_DAMAGE * (1f - (1f - GameConfig.GRENADE_EDGE_DAMAGE_FRACTION) * t)
-            if (z.takeDamage(damage)) registerKill(z)
+            if (z.takeDamage(damage)) {
+                registerKill(z, if (d > 0.001f) dx / d else 0f, if (d > 0.001f) dy / d else 1f)
+            }
             if (d > 0.001f) {
                 val push = GameConfig.GRENADE_KNOCKBACK * (1f - t)
                 z.x += dx / d * push
@@ -387,7 +443,7 @@ class GameWorld {
                 val dy = u.y - player.y
                 val reach = u.radius + player.radius
                 if (dx * dx + dy * dy <= reach * reach) {
-                    applyPowerUp(u.type)
+                    applyPowerUp(u.type, u.x, u.y)
                     u.active = false
                 }
             }
@@ -402,7 +458,8 @@ class GameWorld {
         }
     }
 
-    private fun applyPowerUp(type: PowerUpType) {
+    private fun applyPowerUp(type: PowerUpType, x: Float, y: Float) {
+        pickupEffects(type, x, y)
         when (type) {
             PowerUpType.MEDKIT -> { player.heal(GameConfig.MEDKIT_HEAL); player.cure() }
             PowerUpType.RAPID_FIRE -> player.grantRapidFire(GameConfig.RAPID_FIRE_SECONDS)
@@ -437,12 +494,21 @@ class GameWorld {
 
     /** A zombie's swing landed: damage the player, and poison them if it is a Toxic. */
     private fun hitPlayer(z: Zombie) {
-        if (player.takeDamage(z.swingDamage) && z.type.poisonDps > 0f) {
-            player.poison(z.type.poisonDps, z.type.poisonSeconds)
+        val shielded = player.shielded
+        val wasPoisoned = player.poisoned
+        sound(SoundEffect.ZOMBIE_SWING, z.x, z.y, pitchFor(z))
+        if (player.takeDamage(z.swingDamage)) {
+            playerHurtEffects(z)
+            if (z.type.poisonDps > 0f) {
+                player.poison(z.type.poisonDps, z.type.poisonSeconds)
+                if (!wasPoisoned) playSound(SoundEffect.POISONED)
+            }
+        } else if (shielded) {
+            shieldEffects()
         }
     }
 
-    private fun registerKill(z: Zombie) {
+    private fun registerKill(z: Zombie, dirX: Float, dirY: Float) {
         kills++
         coins += z.type.coinReward
         if (z.type.isBoss) {
@@ -452,6 +518,7 @@ class GameWorld {
         } else if (Random.nextFloat() < z.type.dropChance) {
             dropPowerUp(pickDropType(), z.x, z.y)
         }
+        killEffects(z, dirX, dirY)
     }
 
     private fun updateZombies(dt: Float) {
@@ -465,10 +532,12 @@ class GameWorld {
                 alive++
                 if (z.isBoss) foundBoss = z
                 if (z.chase(dt, player)) hitPlayer(z)
+                if (z.isBoss) bossCues(z)
                 if (z.summonReady) {
                     z.summonReady = false
                     if (zombies.size < GameConfig.BOSS_SUMMON_ALIVE_LIMIT) {
                         waves.spawnMinions(z.x, z.y, z.radius, GameConfig.BOSS_SUMMON_COUNT)
+                        bossSummonEffects(z)
                     }
                 }
                 z.x = z.x.coerceIn(z.radius, WIDTH - z.radius)
@@ -549,6 +618,308 @@ class GameWorld {
             } else {
                 i++
             }
+        }
+    }
+
+
+    // =====================================================================================
+    // Phase 9: sound, particles, stains, damage numbers and camera shake
+    // =====================================================================================
+
+    /** Plays a sound at full volume with no panning (the player's own actions, waves, game over). */
+    fun playSound(effect: SoundEffect, volume: Float = 1f, pitch: Float = 1f) {
+        audio?.play(effect, volume, 0f, pitch)
+    }
+
+    /** Plays a sound located in the world: quieter with distance, panned left/right of the player. */
+    private fun sound(effect: SoundEffect, x: Float, y: Float, pitch: Float = 1f) {
+        val a = audio ?: return
+        val dx = x - player.x
+        val dy = y - player.y
+        val near = 1f - sqrt(dx * dx + dy * dy) / GameConfig.SFX_HEARING_RANGE
+        if (near <= 0f) return
+        val pan = (dx / GameConfig.SFX_PAN_RANGE).coerceIn(-1f, 1f) * GameConfig.SFX_PAN_STRENGTH
+        a.play(effect, near * near, pan, pitch)
+    }
+
+    /** Big zombies sound deeper, small ones higher. */
+    private fun pitchFor(z: Zombie): Float = (GameConfig.SFX_PITCH_REF_RADIUS / z.radius).coerceIn(0.6f, 1.25f)
+
+    /** Adds camera shake (trauma is capped at 1 and fades on its own). */
+    fun addShake(amount: Float) {
+        if (!GameConfig.SCREEN_SHAKE_ENABLED) return
+        trauma = min(1f, trauma + amount)
+    }
+
+    /** Shake that is weaker the farther the event is from the player. */
+    private fun shakeNear(amount: Float, x: Float, y: Float) {
+        val dx = x - player.x
+        val dy = y - player.y
+        addShake(amount * (1f - sqrt(dx * dx + dy * dy) / 1200f).coerceIn(0.25f, 1f))
+    }
+
+    /** Ages particles, stains, numbers and shake. Runs every tick, also behind the game over screen. */
+    private fun updateEffects(dt: Float) {
+        time += dt
+        particles.update(dt)
+        decals.update(dt)
+        floatingTexts.update(dt)
+        if (trauma > 0f) {
+            trauma = max(0f, trauma - GameConfig.SHAKE_DECAY * dt)
+            val m = GameConfig.SHAKE_MAX_OFFSET * trauma * trauma
+            shakeX = (Random.nextFloat() * 2f - 1f) * m
+            shakeY = (Random.nextFloat() * 2f - 1f) * m
+        } else {
+            shakeX = 0f
+            shakeY = 0f
+        }
+    }
+
+    /** Reload start / finish sounds, detected by watching the weapon's reload flag. */
+    private fun syncReloadSounds() {
+        val r = weapon.reloading
+        if (r && !wasReloading) playSound(SoundEffect.RELOAD_START)
+        else if (!r && wasReloading) playSound(SoundEffect.RELOAD_DONE)
+        wasReloading = r
+    }
+
+    /** Background atmosphere: distant groans while zombies are around, a heartbeat at low health. */
+    private fun updateAmbience(dt: Float) {
+        groanTimer -= dt
+        if (groanTimer <= 0f) {
+            val base = GameConfig.GROAN_MIN_INTERVAL +
+                Random.nextFloat() * (GameConfig.GROAN_MAX_INTERVAL - GameConfig.GROAN_MIN_INTERVAL)
+            groanTimer = base / (1f + aliveZombies * 0.04f)
+            playGroan()
+        }
+
+        val lowLine = player.maxHealth * GameConfig.LOW_HEALTH_FRACTION
+        if (player.health < lowLine) {
+            heartbeatTimer -= dt
+            if (heartbeatTimer <= 0f) {
+                playSound(SoundEffect.HEARTBEAT)
+                val ratio = (player.health / lowLine).coerceIn(0f, 1f) // 1 = just below the line, 0 = nearly dead
+                heartbeatTimer = GameConfig.HEARTBEAT_INTERVAL * (1f + ratio)
+            }
+        } else {
+            heartbeatTimer = 0f
+        }
+    }
+
+    private fun playGroan() {
+        if (zombies.isEmpty()) return
+        var tries = 0
+        while (tries < 6) {
+            val z = zombies[Random.nextInt(zombies.size)]
+            if (z.alive) {
+                val effect = if (Random.nextBoolean()) SoundEffect.ZOMBIE_GROAN_1 else SoundEffect.ZOMBIE_GROAN_2
+                sound(effect, z.x, z.y, pitchFor(z))
+                return
+            }
+            tries++
+        }
+    }
+
+    /** Sound, smoke, a brass casing and recoil shake for one shot. */
+    private fun onShotFired(s: WeaponStats) {
+        playSound(SoundEffect.forShot(s.type))
+        val p = player
+        val cosR = cos(p.rotation)
+        val sinR = sin(p.rotation)
+        val mx = p.x + cosR * s.type.muzzleOffset
+        val my = p.y + sinR * s.type.muzzleOffset
+        particles.spawn(
+            ParticleSystem.SMOKE, mx, my,
+            cosR * 45f + (Random.nextFloat() - 0.5f) * 30f, sinR * 45f + (Random.nextFloat() - 0.5f) * 30f,
+            0.45f, 4f
+        )
+        // brass flies out to the player's right-hand side, perpendicular to the aim
+        val eject = 150f + Random.nextFloat() * 90f
+        particles.spawn(
+            ParticleSystem.CASING, p.x + cosR * 16f, p.y + sinR * 16f,
+            -sinR * eject - cosR * 30f, cosR * eject - sinR * 30f,
+            1.1f, if (s.pellets >= 4) 5f else 3.5f, rot = Random.nextFloat() * 6.28f
+        )
+        if (s.pellets >= 4) addShake(GameConfig.SHAKE_ON_SHOTGUN)
+    }
+
+    /** Blood spray where a bullet struck a zombie, plus a thud. A killing blow is handled by [killEffects]. */
+    private fun hitEffects(z: Zombie, x: Float, y: Float, dirX: Float, dirY: Float, killed: Boolean) {
+        if (killed) return
+        bloodBurst(x, y, dirX, dirY, 4, 220f, z.type == ZombieType.TOXIC)
+        sound(SoundEffect.HIT_FLESH, x, y, pitchFor(z))
+    }
+
+    /** Sparks and dust where a bullet hit the edge of the map. */
+    private fun wallHitEffects(x: Float, y: Float, dirX: Float, dirY: Float) {
+        val base = atan2(-dirY, -dirX)
+        var i = 0
+        while (i < 5) {
+            val a = base + (Random.nextFloat() - 0.5f) * 2.2f
+            val s = 160f + Random.nextFloat() * 280f
+            particles.spawn(ParticleSystem.SPARK, x, y, cos(a) * s, sin(a) * s, 0.2f + Random.nextFloat() * 0.15f, 2.5f)
+            i++
+        }
+        radialBurst(ParticleSystem.DUST, x, y, 3, 70f, 0.5f, 5f)
+    }
+
+    /** Final damage number, blood, a stain and the death sound for a zombie that just died. */
+    private fun killEffects(z: Zombie, dirX: Float, dirY: Float) {
+        showDamageNumber(z, FloatingTexts.KILL)
+        val goo = z.type == ZombieType.TOXIC
+        val big = z.radius / 26f
+        bloodBurst(z.x, z.y, dirX, dirY, (10f * big).toInt(), 320f, goo)
+        radialBurst(if (goo) ParticleSystem.GOO else ParticleSystem.BLOOD, z.x, z.y, (6f * big).toInt(), 170f, 0.45f, 3.5f)
+        decals.add(
+            if (goo) DecalField.GOO else DecalField.BLOOD, z.x, z.y, z.radius * 2.6f,
+            Random.nextFloat() * 6.28f,
+            Random.nextInt(if (goo) DecalField.GOO_VARIANTS else DecalField.BLOOD_VARIANTS)
+        )
+        if (z.isBoss) {
+            playSound(SoundEffect.BOSS_DEATH)
+            shakeNear(GameConfig.SHAKE_ON_BOSS_DEATH, z.x, z.y)
+            radialBurst(ParticleSystem.SMOKE, z.x, z.y, 12, 130f, 1.0f, 18f)
+        } else {
+            sound(SoundEffect.ZOMBIE_DEATH, z.x, z.y, pitchFor(z))
+        }
+    }
+
+    /** A zombie's swing hurt the player: grunt, shake, blood and a stain. */
+    private fun playerHurtEffects(z: Zombie) {
+        playSound(SoundEffect.PLAYER_HURT)
+        addShake(GameConfig.SHAKE_ON_HURT * (z.swingDamage / 20f).coerceIn(0.5f, 2f))
+        val dx = player.x - z.x
+        val dy = player.y - z.y
+        val d = sqrt(dx * dx + dy * dy)
+        val nx = if (d > 0.001f) dx / d else 1f
+        val ny = if (d > 0.001f) dy / d else 0f
+        bloodBurst(player.x, player.y, nx, ny, 7, 260f, false)
+        decals.add(
+            DecalField.BLOOD, player.x + nx * 20f, player.y + ny * 20f, 46f,
+            Random.nextFloat() * 6.28f, Random.nextInt(DecalField.BLOOD_VARIANTS)
+        )
+    }
+
+    /** The shield absorbed a swing: a ring of sparks and a zap. */
+    private fun shieldEffects() {
+        playSound(SoundEffect.SHIELD_BLOCK)
+        var i = 0
+        while (i < 8) {
+            val a = Random.nextFloat() * 6.28f
+            val s = 180f + Random.nextFloat() * 160f
+            val r = player.radius + 16f
+            particles.spawn(ParticleSystem.SPARK, player.x + cos(a) * r, player.y + sin(a) * r, cos(a) * s, sin(a) * s, 0.25f, 2.5f)
+            i++
+        }
+    }
+
+    private fun pickupEffects(type: PowerUpType, x: Float, y: Float) {
+        playSound(
+            when (type) {
+                PowerUpType.MEDKIT -> SoundEffect.PICKUP_HEAL
+                PowerUpType.GRENADE -> SoundEffect.PICKUP_GRENADE
+                else -> SoundEffect.PICKUP_POWERUP
+            }
+        )
+        radialBurst(ParticleSystem.PICKUP, x, y, 12, 260f, 0.55f, 4f, tag = type.ordinal)
+    }
+
+    private fun explosionEffects(cx: Float, cy: Float) {
+        sound(SoundEffect.EXPLOSION, cx, cy)
+        shakeNear(GameConfig.SHAKE_ON_EXPLOSION, cx, cy)
+        decals.add(DecalField.SCORCH, cx, cy, GameConfig.GRENADE_BLAST_RADIUS * 1.1f, Random.nextFloat() * 6.28f, 0)
+        radialBurst(ParticleSystem.FIRE, cx, cy, 28, 520f, 0.55f, 9f)
+        radialBurst(ParticleSystem.SMOKE, cx, cy, 14, 160f, 1.1f, 16f)
+        radialBurst(ParticleSystem.DUST, cx, cy, 14, 380f, 0.7f, 8f)
+        radialBurst(ParticleSystem.SPARK, cx, cy, 14, 700f, 0.4f, 3f)
+    }
+
+    /** Boss ability cues: windup growl, charge whoosh and shake, enrage roar. */
+    private fun bossCues(z: Zombie) {
+        if (z.windupJustStarted) {
+            z.windupJustStarted = false
+            sound(SoundEffect.BOSS_WINDUP, z.x, z.y)
+        }
+        if (z.chargeJustStarted) {
+            z.chargeJustStarted = false
+            sound(SoundEffect.BOSS_CHARGE, z.x, z.y)
+            shakeNear(GameConfig.SHAKE_ON_BOSS_CHARGE, z.x, z.y)
+            var i = 0
+            while (i < 6) { // dust kicked up behind the charge
+                val s = 60f + Random.nextFloat() * 120f
+                particles.spawn(
+                    ParticleSystem.DUST, z.x - z.chargeDirX * z.radius, z.y - z.chargeDirY * z.radius,
+                    -z.chargeDirX * s + (Random.nextFloat() - 0.5f) * 90f, -z.chargeDirY * s + (Random.nextFloat() - 0.5f) * 90f,
+                    0.6f, 9f
+                )
+                i++
+            }
+        }
+        if (z.enrageJustStarted) {
+            z.enrageJustStarted = false
+            sound(SoundEffect.BOSS_ROAR, z.x, z.y)
+            shakeNear(GameConfig.SHAKE_ON_BOSS_ROAR, z.x, z.y)
+        }
+    }
+
+    private fun bossSummonEffects(z: Zombie) {
+        sound(SoundEffect.BOSS_SUMMON, z.x, z.y)
+        radialBurst(ParticleSystem.SMOKE, z.x, z.y, 8, 120f, 0.8f, 14f)
+    }
+
+    private fun onPlayerDied() {
+        playSound(SoundEffect.GAME_OVER)
+        addShake(GameConfig.SHAKE_ON_GAME_OVER)
+        radialBurst(ParticleSystem.BLOOD, player.x, player.y, 16, 260f, 0.5f, 4f)
+        decals.add(DecalField.BLOOD, player.x, player.y, 130f, Random.nextFloat() * 6.28f, Random.nextInt(DecalField.BLOOD_VARIANTS))
+    }
+
+    /** Turns the damage a zombie took since its last number into one floating number. */
+    private fun showDamageNumber(z: Zombie, kind: Int) {
+        val dmg = z.pendingDamage
+        z.pendingDamage = 0f
+        if (!GameConfig.SHOW_DAMAGE_NUMBERS || dmg < 0.5f) return
+        z.numberCooldown = GameConfig.DAMAGE_NUMBER_INTERVAL
+        val k = if (kind == FloatingTexts.NORMAL && player.damageBoost) FloatingTexts.BOOSTED else kind
+        floatingTexts.spawn(z.x + (Random.nextFloat() - 0.5f) * 24f, z.y - z.radius - 8f, ceil(dmg).toInt(), k)
+    }
+
+    /** Shows the summed damage of zombies that were hit and are past their number cooldown. */
+    private fun flushDamageNumbers() {
+        var i = 0
+        while (i < zombies.size) {
+            val z = zombies[i]
+            i++
+            if (z.alive && z.pendingDamage > 0f && z.numberCooldown <= 0f) showDamageNumber(z, FloatingTexts.NORMAL)
+        }
+    }
+
+    /** Blood (or toxic goo) sprayed in a cone around the direction (dirX, dirY). */
+    private fun bloodBurst(x: Float, y: Float, dirX: Float, dirY: Float, count: Int, speed: Float, goo: Boolean) {
+        val n = (count * GameConfig.GORE_AMOUNT).toInt()
+        val kind = if (goo) ParticleSystem.GOO else ParticleSystem.BLOOD
+        val base = atan2(dirY, dirX)
+        var i = 0
+        while (i < n) {
+            val a = base + (Random.nextFloat() - 0.5f) * 1.5f
+            val s = speed * (0.35f + Random.nextFloat() * 0.75f)
+            particles.spawn(kind, x, y, cos(a) * s, sin(a) * s, 0.3f + Random.nextFloat() * 0.3f, 2.5f + Random.nextFloat() * 3.5f)
+            i++
+        }
+    }
+
+    /** [count] particles flying out in all directions; speed, life and size vary a little. */
+    private fun radialBurst(kind: Int, x: Float, y: Float, count: Int, speed: Float, life: Float, size: Float, tag: Int = 0) {
+        val n = if (kind == ParticleSystem.BLOOD || kind == ParticleSystem.GOO) (count * GameConfig.GORE_AMOUNT).toInt() else count
+        var i = 0
+        while (i < n) {
+            val a = Random.nextFloat() * 6.2832f
+            val s = speed * (0.3f + Random.nextFloat() * 0.7f)
+            particles.spawn(
+                kind, x, y, cos(a) * s, sin(a) * s,
+                life * (0.7f + Random.nextFloat() * 0.5f), size * (0.6f + Random.nextFloat() * 0.6f), tag
+            )
+            i++
         }
     }
 

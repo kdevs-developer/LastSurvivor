@@ -95,6 +95,64 @@ object GameConfig {
     const val BOSS_SUMMON_COUNT = 3
     const val BOSS_SUMMON_ALIVE_LIMIT = 45
 
+    // ---- Phase 9: screen shake ----
+    /** Set false to turn all camera shake off. */
+    const val SCREEN_SHAKE_ENABLED = true
+    /** Shake "trauma" (0..1) lost per second; the offset grows with trauma squared. */
+    const val SHAKE_DECAY = 2.4f
+    /** Largest camera offset in pixels (at full trauma). */
+    const val SHAKE_MAX_OFFSET = 20f
+    /** Trauma added by each event (trauma is capped at 1). */
+    const val SHAKE_ON_HURT = 0.30f
+    const val SHAKE_ON_SHOTGUN = 0.12f
+    const val SHAKE_ON_EXPLOSION = 0.55f
+    const val SHAKE_ON_BOSS_CHARGE = 0.40f
+    const val SHAKE_ON_BOSS_ROAR = 0.35f
+    const val SHAKE_ON_BOSS_DEATH = 0.80f
+    const val SHAKE_ON_GAME_OVER = 0.50f
+
+    // ---- Phase 9: particles, decals and damage numbers ----
+    const val PARTICLE_CAPACITY = 480
+    /** Blood and scorch stains on the floor: how many are kept, and how long each lasts. */
+    const val DECAL_CAPACITY = 96
+    const val DECAL_LIFETIME = 28f
+    const val DECAL_FADE_SECONDS = 6f
+    /** Bigger = more blood. 1 is the default. */
+    const val GORE_AMOUNT = 1f
+    const val SHOW_DAMAGE_NUMBERS = true
+    const val FLOATING_TEXT_CAPACITY = 40
+    const val DAMAGE_NUMBER_LIFE = 0.7f
+    const val DAMAGE_NUMBER_RISE_SPEED = 70f
+    /** A zombie shows at most one number per this many seconds (hits in between are summed). */
+    const val DAMAGE_NUMBER_INTERVAL = 0.12f
+    /** Zombies fade and grow in over this long after spawning (matters for summoned minions). */
+    const val ZOMBIE_SPAWN_ANIM_SECONDS = 0.35f
+
+    // ---- Phase 9: screen overlays ----
+    /** Below this fraction of health the screen edges pulse red. */
+    const val LOW_HEALTH_FRACTION = 0.3f
+    /** Pulses per second at full health loss; the pulse slows as health recovers. */
+    const val LOW_HEALTH_PULSE_HZ = 1.6f
+
+    // ---- Phase 9: sound ----
+    const val SFX_MASTER_VOLUME = 0.9f
+    /** Most sounds playing at once (SoundPool drops the lowest priority beyond this). */
+    const val SFX_MAX_STREAMS = 14
+    /** Sounds quieter than this are not played at all. */
+    const val SFX_MIN_AUDIBLE = 0.03f
+    /** A sound this far from the player (world units) is silent; volume falls off with distance. */
+    const val SFX_HEARING_RANGE = 1500f
+    /** Horizontal distance at which a sound is panned fully to one side, and how much of that pan is applied. */
+    const val SFX_PAN_RANGE = 800f
+    const val SFX_PAN_STRENGTH = 0.7f
+    /** Zombies of this radius sound at normal pitch; bigger ones sound deeper. */
+    const val SFX_PITCH_REF_RADIUS = 26f
+    /** Seconds between ambient zombie groans (random in this range, shorter with more zombies). */
+    const val GROAN_MIN_INTERVAL = 2.5f
+    const val GROAN_MAX_INTERVAL = 6f
+    /** Below LOW_HEALTH_FRACTION a heartbeat plays; this is the gap at the lowest health. */
+    const val HEARTBEAT_INTERVAL = 0.75f
+
     /** Draws FPS, alive zombies and shot stats in the top-left corner. The real HUD is in Compose. */
     const val SHOW_DEBUG_OVERLAY = false
 }

@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: graphics, animations and effects (Phase 9). Read by GameColors (renderer) and Compose. -->
+<resources>
+    <!-- Particles (alpha is applied by the renderer as the particle ages) -->
+    <color name="particle_blood">#FFB71C1C</color>
+    <color name="particle_goo">#FF9CCC65</color>
+    <color name="particle_spark">#FFFFE082</color>
+    <color name="particle_dust">#FFB0A99A</color>
+    <color name="particle_smoke">#FF6B6B70</color>
+    <color name="particle_fire">#FFFF8A00</color>
+    <color name="particle_casing">#FFD4A62A</color>
+
+    <!-- Floor stains (they overlap, so the alpha is built in) -->
+    <color name="decal_blood">#B3641010</color>
+    <color name="decal_goo">#B3557A2A</color>
+    <color name="decal_scorch">#E6050505</color>
+
+    <!-- Floor decoration -->
+    <color name="decor_crack">#FF0F1012</color>
+    <color name="decor_stain">#590A0A0C</color>
+    <color name="decor_rubble">#FF2B2E34</color>
+    <color name="decor_rubble_light">#FF3A3E46</color>
+    <color name="decor_mark">#66C9B037</color>
+
+    <!-- Sprite shading shared by the player and zombies -->
+    <color name="sprite_outline">#FF0A0A0C</color>
+    <color name="sprite_highlight">#33FFFFFF</color>
+    <color name="sprite_shade">#33000000</color>
+
+    <!-- Player gear -->
+    <color name="player_weapon_accent">#FF5B6068</color>
+    <color name="player_weapon_wood">#FF6B4A2B</color>
+    <color name="player_pack">#FF3E3A2F</color>
+    <color name="player_boot">#FF1F1F23</color>
+
+    <!-- Zombie features -->
+    <color name="zombie_armor">#FF5C6670</color>
+    <color name="zombie_pustule">#FFD4FF5A</color>
+    <color name="zombie_spike">#FFD9D2C0</color>
+    <color name="zombie_sac">#FFB58AD6</color>
+
+    <!-- Combat effects -->
+    <color name="hit_flash">#FFFFFFFF</color>
+    <color name="muzzle_core">#FFFFF8E1</color>
+    <color name="muzzle_glow">#44FFC107</color>
+    <color name="explosion_core">#FFFFFDE7</color>
+
+    <!-- Screen overlays -->
+    <color name="vignette">#99000000</color>
+    <color name="low_health_vignette">#FFB71C1C</color>
+
+    <!-- Floating damage numbers -->
+    <color name="damage_number">#FFFFFFFF</color>
+    <color name="damage_number_boosted">#FFFF7043</color>
+    <color name="damage_number_kill">#FFFFD54F</color>
+    <color name="damage_number_outline">#CC000000</color>
+
+    <!-- Compose HUD (Phase 9): the pale bar that trails behind a health drop -->
+    <color name="hud_health_trail">#88FFFFFF</color>
+</resources>
