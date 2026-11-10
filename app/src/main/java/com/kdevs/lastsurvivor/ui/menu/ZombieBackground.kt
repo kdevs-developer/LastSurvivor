@@ -26,13 +26,25 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 private const val LOOP_MS = 40_000
-private const val ZOMBIE_COUNT = 6
-private const val WALK_CYCLES = 60 // integer => seamless loop
 
-private class Building(val xFrac: Float, val wFrac: Float, val hFrac: Float)
+/** Loop positions (0..1) of lightning strikes; two are double flashes. None is near the loop seam. */
+private val FLASHES = floatArrayOf(0.115f, 0.125f, 0.46f, 0.72f, 0.733f)
+private const val FLASH_LENGTH = 0.012f // fraction of the loop, about half a second
+private const val WINDOW_COLUMNS = 2
+private const val BAT_COUNT = 3
+private const val BAT_FLAP_CYCLES = 300 // integer => seamless loop
+
+private class Building(
+    val xFrac: Float,
+    val wFrac: Float,
+    val hFrac: Float,
+    val rows: Int,
+    val lit: BooleanArray,      // which windows have a light on
+    val flickers: BooleanArray  // which of those lights flicker
+)
 
 /**
- * Animated dark city skyline with zombies shambling across.
+ * Animated infected-city skyline: moon, fog, lit windows, bats and lightning.
  * Animated values are read inside the draw lambda only, so this never recomposes per frame.
  */
 @Composable
@@ -59,11 +71,25 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
     val buildingColor = colorResource(R.color.menu_building)
     val groundColor = colorResource(R.color.menu_ground)
     val vignette = colorResource(R.color.menu_vignette)
-    val zombieBody = colorResource(R.color.menu_zombie_body)
-    val zombieEye = colorResource(R.color.menu_zombie_eye)
+    val lightning = colorResource(R.color.menu_lightning)
+    val bolt = colorResource(R.color.menu_bolt)
+    val windowLit = colorResource(R.color.menu_window_lit)
+    val batColor = colorResource(R.color.menu_bat)
     val buildings = remember {
         val rnd = Random(7)
-        List(16) { i -> Building(i / 16f, 0.05f + rnd.nextFloat() * 0.04f, 0.18f + rnd.nextFloat() * 0.30f) }
+        List(16) { i ->
+            val hFrac = 0.18f + rnd.nextFloat() * 0.30f
+            val rows = (hFrac / 0.04f).toInt().coerceAtLeast(2)
+            val count = rows * WINDOW_COLUMNS
+            Building(
+                xFrac = i / 16f,
+                wFrac = 0.05f + rnd.nextFloat() * 0.04f,
+                hFrac = hFrac,
+                rows = rows,
+                lit = BooleanArray(count) { rnd.nextFloat() < 0.16f },
+                flickers = BooleanArray(count) { rnd.nextFloat() < 0.25f }
+            )
+        }
     }
 
     Canvas(modifier) {
@@ -77,11 +103,46 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
         drawCircle(
             Brush.radialGradient(
                 listOf(moonGlowStart, moonGlowEnd),
-                center = Offset(w * 0.78f, h * 0.2f), radius = h * 0.4f
+                center = Offset(w * 0.5f, h * 0.2f), radius = h * 0.4f
             ),
-            radius = h * 0.4f, center = Offset(w * 0.78f, h * 0.2f)
+            radius = h * 0.4f, center = Offset(w * 0.5f, h * 0.2f)
         )
-        drawCircle(moon, radius = h * 0.09f, center = Offset(w * 0.78f, h * 0.2f))
+        drawCircle(moon, radius = h * 0.09f, center = Offset(w * 0.5f, h * 0.2f))
+
+        // bats crossing the sky (laps are whole numbers, so the loop is seamless)
+        val flap = sin(t * BAT_FLAP_CYCLES * 2.0 * PI).toFloat()
+        for (i in 0 until BAT_COUNT) {
+            val laps = 2 + i
+            val lap = (t * laps + i / BAT_COUNT.toFloat()) % 1f
+            val batX = if (i % 2 == 0) lap * (w + 200f) - 100f else w + 100f - lap * (w + 200f)
+            val batY = h * (0.14f + 0.09f * i) + sin((t * laps * 4f + i) * 2.0 * PI).toFloat() * h * 0.02f
+            drawBat(batX, batY, h * 0.003f * (1f + 0.2f * i), flap, batColor)
+        }
+
+        // lightning: the sky brightens for a moment, and a bolt strikes behind the skyline
+        var flash = 0f
+        var flashIndex = -1
+        for (i in FLASHES.indices) {
+            val d = t - FLASHES[i]
+            if (d >= 0f && d <= FLASH_LENGTH) {
+                val e = 1f - d / FLASH_LENGTH
+                if (e > flash) { flash = e; flashIndex = i }
+            }
+        }
+        if (flashIndex >= 0) {
+            drawRect(lightning.copy(alpha = 0.22f * flash))
+            val boltX = w * (0.15f + 0.17f * flashIndex)
+            var px = boltX
+            var py = 0f
+            val steps = 6
+            for (step in 1..steps) {
+                val ny = h * 0.5f * step / steps
+                val nx = boltX + sin(step * 2.3f + flashIndex * 1.7f) * w * 0.03f
+                drawLine(bolt.copy(alpha = flash), Offset(px, py), Offset(nx, ny), 3f, StrokeCap.Round)
+                px = nx
+                py = ny
+            }
+        }
 
         // drifting fog
         for (k in 0 until 3) {
@@ -104,17 +165,31 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
                 topLeft = Offset(b.xFrac * w, groundY - bh),
                 size = Size(b.wFrac * w, bh)
             )
+            // lit windows; some of them flicker
+            val bw = b.wFrac * w
+            val ww = bw * 0.2f
+            val wh = ww * 1.2f
+            for (r in 0 until b.rows) {
+                val wy = groundY - bh + h * 0.03f + r * h * 0.04f
+                if (wy + wh > groundY - h * 0.02f) break
+                for (c in 0 until WINDOW_COLUMNS) {
+                    val idx = r * WINDOW_COLUMNS + c
+                    if (!b.lit[idx]) continue
+                    var alpha = 0.8f
+                    if (b.flickers[idx]) {
+                        val wave = sin((t * (24 + idx % 5 * 6) + idx * 0.37f) * 2.0 * PI).toFloat()
+                        if (wave < -0.3f) continue
+                        alpha = 0.55f + 0.25f * wave
+                    }
+                    drawRect(
+                        windowLit.copy(alpha = alpha),
+                        topLeft = Offset(b.xFrac * w + bw * (0.18f + c * 0.45f), wy),
+                        size = Size(ww, wh)
+                    )
+                }
+            }
         }
         drawRect(groundColor, topLeft = Offset(0f, groundY), size = Size(w, h - groundY))
-
-        // zombies
-        for (i in 0 until ZOMBIE_COUNT) {
-            val progress = (t + i / ZOMBIE_COUNT.toFloat()) % 1f
-            val x = progress * (w + 240f) - 120f
-            val scale = h * (0.0011f + 0.00015f * (i % 3))
-            val bob = sin((t * WALK_CYCLES + i) * 2.0 * PI).toFloat()
-            drawZombie(x, groundY + (i % 3) * h * 0.02f, scale, bob, zombieBody, zombieEye)
-        }
 
         // pulsing red vignette
         drawRect(
@@ -126,22 +201,15 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
     }
 }
 
-private fun DrawScope.drawZombie(x: Float, groundY: Float, s: Float, bob: Float, body: Color, eye: Color) {
-    val bobY = bob * 3f * s * 10f
-    val hip = Offset(x, groundY - 40f * s * 10f)
-    val shoulder = Offset(x + 6f * s * 10f, hip.y - 38f * s * 10f + bobY)
-    val head = Offset(shoulder.x + 4f * s * 10f, shoulder.y - 12f * s * 10f)
-
-    // legs
-    val stride = bob * 10f * s * 10f
-    drawLine(body, hip, Offset(x - stride, groundY), 7f * s * 10f, StrokeCap.Round)
-    drawLine(body, hip, Offset(x + stride, groundY), 7f * s * 10f, StrokeCap.Round)
-    // torso
-    drawLine(body, hip, shoulder, 14f * s * 10f, StrokeCap.Round)
-    // arms reaching forward
-    drawLine(body, shoulder, Offset(shoulder.x + 34f * s * 10f, shoulder.y + 4f * s * 10f + bobY), 5f * s * 10f, StrokeCap.Round)
-    drawLine(body, shoulder, Offset(shoulder.x + 30f * s * 10f, shoulder.y + 14f * s * 10f - bobY), 5f * s * 10f, StrokeCap.Round)
-    // head + glowing eye
-    drawCircle(body, 9f * s * 10f, head)
-    drawCircle(eye, 1.6f * s * 10f, Offset(head.x + 4f * s * 10f, head.y - 1f * s * 10f))
+/** A bat silhouette: [flap] in -1..1 raises and lowers the wings. */
+private fun DrawScope.drawBat(x: Float, y: Float, s: Float, flap: Float, color: Color) {
+    val lift = flap * 9f * s
+    for (k in 0..1) {
+        val side = if (k == 0) -1 else 1
+        val mid = Offset(x + side * 9f * s, y - lift - 2f * s)
+        val tip = Offset(x + side * 18f * s, y + lift * 0.6f)
+        drawLine(color, Offset(x, y), mid, 3f * s, StrokeCap.Round)
+        drawLine(color, mid, tip, 2.2f * s, StrokeCap.Round)
+    }
+    drawCircle(color, 3.5f * s, Offset(x, y))
 }

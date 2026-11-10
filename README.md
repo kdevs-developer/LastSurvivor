@@ -17,6 +17,18 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 | 9 | Graphics, Animations and Sound Effects | Done |
 | 10 | DataStore, Optimization and Testing | Done |
 
+## Enhancements (screen by screen)
+
+**1. Main menu, "Toxic neon" style** (`ui/menu/`)
+
+- **Layout:** centred glowing title, then one big circular **Play** orb with a pulse that ripples outwards, then four round icon buttons: Continue (shows `WAVE n` and `HP x`, greyed out when nothing is saved), Armory, Survivor, Options. Coin and kill pills sit top left; best wave and the sound switch top right.
+- **Palette:** near-black purple with acid green. The menu colours in `colors.xml` (`menu_*`) and the new `colors_menu.xml` (`neon_*`) drive both the Compose UI and the background.
+- **Background** (`ZombieBackground.kt`): toxic green moon behind the title, green fog, lit windows (some flicker), bats, green-white lightning with a bolt behind the skyline. All loops are seamless.
+- **Motion:** items slide in one after another, the title flickers like a failing neon sign, coins and kills count up, and buttons shrink slightly when pressed with a light haptic tick.
+- **Extras:** a rotating survival tip at the bottom (`menu_tips` in `strings_menu.xml`) and an exit prompt when pressing Back.
+- **Fonts:** the system font is still used. For the premium look, drop a font such as Orbitron or Rajdhani into `res/font/` and set it as the `fontFamily` in `ui/theme/Theme.kt` typography.
+- Not compiled in the build sandbox (no Android SDK): Sync, Build and run, then check the title flicker, the pulse ring and the lightning brightness on your device.
+
 ## Phase 10: DataStore, Optimization and Testing
 
 All ten phases are done. This phase adds saving, the two screens that were still placeholders, a performance pass and unit tests.

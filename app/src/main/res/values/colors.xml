@@ -16,21 +16,21 @@
     <color name="bone">#FFE8E2D6</color>
 
     <!-- ===== Menu ===== -->
-    <color name="menu_sky_top">#FF050507</color>
-    <color name="menu_sky_middle">#FF2A0D10</color>
-    <color name="menu_sky_bottom">#FF0B0B0D</color>
-    <color name="menu_moon">#FF8E1B1B</color>
-    <color name="menu_moon_glow_start">#66FF3B30</color>
-    <color name="menu_moon_glow_end">#00FF3B30</color>
-    <color name="menu_fog_start">#33B0B0B0</color>
-    <color name="menu_fog_end">#00B0B0B0</color>
-    <color name="menu_building">#FF0E0E12</color>
-    <color name="menu_ground">#FF060608</color>
-    <color name="menu_vignette">#FF7F0000</color>
-    <color name="menu_zombie_body">#FF05070A</color>
-    <color name="menu_zombie_eye">#FFFF3B30</color>
-    <color name="menu_button_container">#99000000</color>
-    <color name="menu_chip_container">#CC16161A</color>
+    <color name="menu_sky_top">#FF07060C</color>
+    <color name="menu_sky_middle">#FF0F0C1C</color>
+    <color name="menu_sky_bottom">#FF050409</color>
+    <color name="menu_moon">#FF6EE023</color>
+    <color name="menu_moon_glow_start">#446EE023</color>
+    <color name="menu_moon_glow_end">#006EE023</color>
+    <color name="menu_fog_start">#336EE023</color>
+    <color name="menu_fog_end">#006EE023</color>
+    <color name="menu_building">#FF0A0912</color>
+    <color name="menu_ground">#FF050409</color>
+    <color name="menu_vignette">#FF1F5A0B</color>
+    <color name="menu_zombie_body">#FF030206</color>
+    <color name="menu_zombie_eye">#FF9CFF3A</color>
+    <color name="menu_button_container">#FF0B0A14</color>
+    <color name="menu_chip_container">#FF0B0A14</color>
 
     <!-- ===== On-screen controls ===== -->
     <color name="control_move">#FF4FC3F7</color>

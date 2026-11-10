@@ -5,6 +5,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kdevs.lastsurvivor.data.PlayerPrefsRepository
 import com.kdevs.lastsurvivor.data.PlayerProgress
+import com.kdevs.lastsurvivor.data.PlayerStats
 import com.kdevs.lastsurvivor.data.RunCheckpoint
 import com.kdevs.lastsurvivor.data.persistenceScope
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +21,13 @@ class MainMenuViewModel(app: Application) : AndroidViewModel(app) {
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = PlayerProgress()
+    )
+
+    /** Lifetime statistics (the menu shows total kills). */
+    val stats: StateFlow<PlayerStats> = repository.stats.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = PlayerStats()
     )
 
     /** The saved wave Continue would restore, or null (the Continue button is disabled). */

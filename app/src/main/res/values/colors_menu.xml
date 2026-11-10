@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: main menu, "Toxic neon" style -->
+<resources>
+    <color name="menu_lightning">#FFC8FFA0</color>
+    <color name="menu_bolt">#FFEFFFD8</color>
+    <color name="menu_window_lit">#FF9CFF3A</color>
+    <color name="menu_bat">#FF030304</color>
+    <color name="menu_kills_orange">#FFFF8A3D</color>
+
+    <color name="neon_green">#FF9CFF3A</color>
+    <color name="neon_green_dim">#FF4C8F1F</color>
+    <color name="neon_glow">#FF6EE023</color>
+    <color name="neon_text">#FFB6F56A</color>
+    <color name="neon_title">#FFE4FFC4</color>
+    <color name="neon_label">#FF8FB878</color>
+    <color name="neon_panel">#FF0B0A14</color>
+    <color name="neon_border">#FF2F5A14</color>
+</resources>

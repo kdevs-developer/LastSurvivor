@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Module: main menu -->
 <resources>
-    <string name="menu_title">LAST\nSURVIVOR</string>
-    <string name="menu_tagline">Survive the dead city</string>
+    <string name="menu_title">LAST SURVIVOR</string>
+    <string name="menu_tagline">THE CITY IS INFECTED</string>
     <string name="menu_coins_format">%1$d</string>
     <string name="menu_wave_format">Wave %1$d</string>
 
@@ -12,4 +12,30 @@
     <string name="menu_weapon_upgrades">WEAPON UPGRADES</string>
     <string name="menu_character">CHARACTER</string>
     <string name="menu_settings">SETTINGS</string>
+    <string name="menu_label_continue">CONTINUE</string>
+    <string name="menu_label_continue_wave_format">WAVE %1$d</string>
+    <string name="menu_continue_hp_format">HP %1$d</string>
+    <string name="menu_label_armory">ARMORY</string>
+    <string name="menu_label_survivor">SURVIVOR</string>
+    <string name="menu_label_options">OPTIONS</string>
+    <string name="menu_kills_format">%1$d kills</string>
+    <string name="menu_continue_details_format">HP %1$d  ·  Grenades %2$d</string>
+
+    <string name="menu_exit_title">Leave the survivors?</string>
+    <string name="menu_exit_message">The dead city will wait for you.</string>
+    <string name="menu_exit_confirm">Exit</string>
+    <string name="menu_exit_cancel">Stay</string>
+
+    <!-- Survival tips shown under the tagline, one at a time -->
+    <string-array name="menu_tips">
+        <item>Keep moving. Standing still is how you get eaten.</item>
+        <item>Medkits drop twice as often when your health is low.</item>
+        <item>Rifle bullets pierce up to three zombies. Line them up.</item>
+        <item>Step aside when the Brute\'s red strip appears.</item>
+        <item>Grenades never hurt you. Save them for crowds.</item>
+        <item>A Shield blocks poison too.</item>
+        <item>The shotgun is deadly up close and weak at range.</item>
+        <item>Clearing a boss wave pays double coins.</item>
+        <item>A boss waits at wave 5. Keep a grenade or two.</item>
+    </string-array>
 </resources>
