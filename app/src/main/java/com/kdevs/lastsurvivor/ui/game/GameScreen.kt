@@ -56,6 +56,7 @@ import com.kdevs.lastsurvivor.game.engine.WavePhase
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
 import com.kdevs.lastsurvivor.ui.game.controls.GameControls
 import com.kdevs.lastsurvivor.ui.game.hud.GameHud
+import com.kdevs.lastsurvivor.ui.game.hud.WaveBannerOverlay
 
 @Composable
 fun GameScreen(
@@ -164,6 +165,8 @@ fun GameScreen(
                     tint = colorResource(R.color.game_overlay_text)
                 )
             }
+            // Above the HUD and controls, semi-transparent so they stay visible underneath
+            WaveBannerOverlay(hud)
         } else {
             PauseOverlay(
                 hud = hud,

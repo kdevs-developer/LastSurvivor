@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: premium in-game HUD glass panels. Shares neon_* from colors_menu.xml. -->
+<resources>
+    <color name="hud_glass_top">#D1221B34</color>
+    <color name="hud_glass_bottom">#D10E0B16</color>
+    <color name="hud_glass_stroke">#2EFFFFFF</color>
+    <color name="hud_glass_stroke_dim">#0FFFFFFF</color>
+</resources>

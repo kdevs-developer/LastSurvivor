@@ -16,6 +16,7 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.only
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -62,7 +64,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
@@ -133,9 +137,10 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
             ) {
                 Text(
                     text = stringResource(R.string.hud_wave_format, hud.wave),
-                    color = colorResource(R.color.hud_banner_text),
+                    color = colorResource(R.color.neon_green),
                     style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Black
+                    fontWeight = FontWeight.Black,
+                    letterSpacing = 4.sp
                 )
                 if (hud.phase == WavePhase.ACTIVE) {
                     Text(
@@ -153,12 +158,20 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
             AmmoDisplay(hud, Modifier.align(Alignment.BottomCenter))
 
         }
+    }
+}
 
-        // Upper-centre: edge-to-edge band while waiting for the next wave. It sits above the middle of the
-        // screen so it does not cover the player, and it is not clickable.
+/**
+ * Compact card, centred horizontally, shown while waiting for the next wave. Drawn as its own layer so
+ * GameScreen can place it above the HUD and controls without moving them; the semi-transparent background
+ * lets the game show through. It is not clickable, so touches pass to the controls underneath.
+ */
+@Composable
+fun WaveBannerOverlay(hud: HudState, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize()) {
         AnimatedVisibility(
             visible = hud.phase == WavePhase.COUNTDOWN,
-            modifier = Modifier.align(BiasAlignment(0f, -0.4f)),
+            modifier = Modifier.align(BiasAlignment(0f, -0.35f)),
             enter = fadeIn(tween(250)) + scaleIn(tween(350), initialScale = 1.15f),
             exit = fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.95f)
         ) {
@@ -206,11 +219,20 @@ private fun BossBar(boss: ZombieType, percent: Int) {
 @Composable
 private fun AmmoDisplay(hud: HudState, modifier: Modifier = Modifier) {
     val low = hud.magazine > 0 && hud.ammo * 4 <= hud.magazine
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    val fraction = if (hud.magazine > 0) (hud.ammo.toFloat() / hud.magazine).coerceIn(0f, 1f) else 0f
+    val shown by animateFloatAsState(fraction, tween(150), label = "ammo")
+    val barColor = if (low) colorResource(R.color.hud_ammo_low) else colorResource(R.color.neon_green)
+    Column(
+        modifier = modifier
+            .glass()
+            .padding(horizontal = 24.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(
-            text = stringResource(hud.weapon.nameRes()),
-            color = colorResource(R.color.hud_banner_text).copy(alpha = 0.8f),
-            style = MaterialTheme.typography.labelLarge
+            text = stringResource(hud.weapon.nameRes()).uppercase(),
+            color = colorResource(R.color.neon_label),
+            style = MaterialTheme.typography.labelSmall,
+            letterSpacing = 2.sp
         )
         if (hud.reloading) {
             Text(
@@ -224,7 +246,22 @@ private fun AmmoDisplay(hud: HudState, modifier: Modifier = Modifier) {
                 text = stringResource(R.string.hud_ammo_format, hud.ammo, hud.magazine),
                 color = if (low) colorResource(R.color.hud_ammo_low) else colorResource(R.color.game_overlay_text),
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
+                fontWeight = FontWeight.Black,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Box(
+            modifier = Modifier
+                .width(120.dp)
+                .height(3.dp)
+                .clip(RoundedCornerShape(50))
+                .background(Color.White.copy(alpha = 0.12f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .fillMaxWidth(shown)
+                    .background(barColor)
             )
         }
     }
@@ -253,21 +290,19 @@ private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
     val bossType = remember(hud.wave, boss) { if (boss) bossForWave(hud.wave) else null }
     val totalSeconds = if (hud.wave <= 1) GameConfig.FIRST_WAVE_COUNTDOWN else GameConfig.WAVE_COUNTDOWN
 
+    // Compact card sized to its content: it only takes the middle of the screen, so the HUD and the
+    // playfield stay untouched.
+    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = modifier
-            .fillMaxWidth()
+            .clip(shape)
             .background(background)
-            .drawBehind {
-                val stroke = 2.dp.toPx()
-                drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = stroke)
-                drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = stroke)
-            }
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
-            .padding(horizontal = 24.dp, vertical = 10.dp),
+            .border(1.dp, line, shape)
+            .padding(horizontal = 20.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column {
             if (hud.clearedBonus > 0) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
@@ -297,7 +332,7 @@ private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(R.string.hud_banner_wave_format, hud.wave),
                 color = accent,
-                style = MaterialTheme.typography.displaySmall,
+                style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 3.sp,
                 maxLines = 1
@@ -309,7 +344,7 @@ private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
                 letterSpacing = 2.sp
             )
         }
-        CountdownRing(hud.countdownSeconds, totalSeconds, accent, track)
+        CountdownRing(hud.countdownSeconds, totalSeconds, accent, track, Modifier.size(48.dp))
     }
 }
 
@@ -348,6 +383,23 @@ private fun CountdownRing(seconds: Int, totalSeconds: Float, color: Color, track
     }
 }
 
+/** Premium "glass" panel: soft vertical tint with a hairline border that is brighter along the top edge. */
+@Composable
+private fun Modifier.glass(shape: Shape = RoundedCornerShape(14.dp)): Modifier = this
+    .clip(shape)
+    .background(
+        Brush.verticalGradient(
+            listOf(colorResource(R.color.hud_glass_top), colorResource(R.color.hud_glass_bottom))
+        )
+    )
+    .border(
+        1.dp,
+        Brush.verticalGradient(
+            listOf(colorResource(R.color.hud_glass_stroke), colorResource(R.color.hud_glass_stroke_dim))
+        ),
+        shape
+    )
+
 @Composable
 private fun HealthBar(health: Int, maxHealth: Int) {
     val fraction = if (maxHealth > 0) (health.toFloat() / maxHealth).coerceIn(0f, 1f) else 0f
@@ -361,7 +413,7 @@ private fun HealthBar(health: Int, maxHealth: Int) {
     val shown by animateFloatAsState(fraction, tween(250), label = "health")
     val trail by animateFloatAsState(fraction, tween(700, delayMillis = 250), label = "healthTrail")
     val fill by animateColorAsState(target, tween(300), label = "healthColor")
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         if (fraction <= GameConfig.LOW_HEALTH_FRACTION) {
             PulsingHeart(fill)
         } else {
@@ -369,10 +421,11 @@ private fun HealthBar(health: Int, maxHealth: Int) {
         }
         Box(
             modifier = Modifier
-                .width(190.dp)
-                .height(22.dp)
-                .clip(RoundedCornerShape(50))
-                .background(colorResource(R.color.hud_panel)),
+                .width(200.dp)
+                .height(26.dp)
+                .glass(RoundedCornerShape(50))
+                .padding(3.dp)
+                .clip(RoundedCornerShape(50)),
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -386,14 +439,15 @@ private fun HealthBar(health: Int, maxHealth: Int) {
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(shown)
-                    .background(fill)
+                    .background(Brush.horizontalGradient(listOf(fill.copy(alpha = 0.7f), fill)))
                     .align(Alignment.CenterStart)
             )
             Text(
                 text = stringResource(R.string.hud_health_format, health, maxHealth),
                 color = colorResource(R.color.game_overlay_text),
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
             )
         }
     }
@@ -443,14 +497,20 @@ private fun popOnChange(key: Any): Modifier {
 
 @Composable
 private fun Chip(icon: ImageVector, label: String, tint: Color, modifier: Modifier = Modifier) {
-    Surface(modifier = modifier, shape = RoundedCornerShape(50), color = colorResource(R.color.hud_panel)) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
-            Text(label, color = colorResource(R.color.game_overlay_text), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
-        }
+    Row(
+        modifier = modifier
+            .glass(RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(16.dp))
+        Text(
+            label,
+            color = colorResource(R.color.game_overlay_text),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.5.sp,
+        )
     }
 }

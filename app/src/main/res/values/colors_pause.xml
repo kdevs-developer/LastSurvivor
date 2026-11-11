@@ -8,10 +8,10 @@
     <color name="pause_danger_text">#FFF09595</color>
 
     <!-- Next-wave band -->
-    <color name="wave_band_bg">#D107060C</color>
+    <color name="wave_band_bg">#A607060C</color>
     <color name="wave_band_line">#FF4C8F1F</color>
     <color name="wave_ring_track">#FF2F3A26</color>
-    <color name="wave_band_boss_bg">#DB280808</color>
+    <color name="wave_band_boss_bg">#A6280808</color>
     <color name="wave_band_boss_line">#FFE24B4A</color>
     <color name="wave_boss_accent">#FFFF6B6B</color>
     <color name="wave_boss_label">#FFF09595</color>
