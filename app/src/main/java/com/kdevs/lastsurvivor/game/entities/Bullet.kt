@@ -27,6 +27,9 @@ class Bullet : Entity(0f, 0f, GameConfig.BULLET_RADIUS) {
     var damage: Float = 0f
         private set
 
+    /** True for a turret's bullets: they do not count towards the player's shots and accuracy. */
+    var fromTurret: Boolean = false
+
     /** Distance flown so far; the renderer uses it to size the tracer tail. */
     var travelled: Float = 0f
         private set
@@ -52,6 +55,7 @@ class Bullet : Entity(0f, 0f, GameConfig.BULLET_RADIUS) {
         hitsLeft = pierce.coerceIn(1, MAX_PIERCE)
         hitCount = 0
         radius = GameConfig.BULLET_RADIUS
+        fromTurret = false
         active = true
     }
 

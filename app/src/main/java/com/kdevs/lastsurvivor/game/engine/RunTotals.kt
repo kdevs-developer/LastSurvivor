@@ -11,7 +11,8 @@ data class RunTotals(
     val shotsFired: Int = 0,
     val shotsHit: Int = 0,
     val bossKills: Int = 0,
-    val seconds: Int = 0
+    val seconds: Int = 0,
+    val diamonds: Int = 0
 ) {
     /** What happened since [earlier]. Never negative, even if the engine was reset in between. */
     operator fun minus(earlier: RunTotals) = RunTotals(
@@ -20,6 +21,7 @@ data class RunTotals(
         shotsFired = (shotsFired - earlier.shotsFired).coerceAtLeast(0),
         shotsHit = (shotsHit - earlier.shotsHit).coerceAtLeast(0),
         bossKills = (bossKills - earlier.bossKills).coerceAtLeast(0),
-        seconds = (seconds - earlier.seconds).coerceAtLeast(0)
+        seconds = (seconds - earlier.seconds).coerceAtLeast(0),
+        diamonds = (diamonds - earlier.diamonds).coerceAtLeast(0)
     )
 }

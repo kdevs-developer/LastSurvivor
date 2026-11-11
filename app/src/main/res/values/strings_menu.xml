@@ -16,7 +16,7 @@
     <string name="menu_label_continue_wave_format">WAVE %1$d</string>
     <string name="menu_continue_hp_format">HP %1$d</string>
     <string name="menu_label_armory">ARMORY</string>
-    <string name="menu_label_survivor">SURVIVOR</string>
+    <string name="menu_label_survivor">CHARACTERS</string>
     <string name="menu_label_options">OPTIONS</string>
     <string name="menu_kills_format">%1$d kills</string>
     <string name="menu_continue_details_format">HP %1$d  ·  Grenades %2$d</string>
@@ -38,4 +38,5 @@
         <item>Clearing a boss wave pays double coins.</item>
         <item>A boss waits at wave 5. Keep a grenade or two.</item>
     </string-array>
+    <string name="menu_diamonds_format">%1$d</string>
 </resources>

@@ -5,7 +5,7 @@ import android.content.Context
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.kdevs.lastsurvivor.game.audio.SoundManager
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.render.GameRenderer
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.StateFlow
@@ -43,7 +43,7 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     fun applySettings(settings: GameSettings) { world.settings = settings }
 
     /** Chooses the outfit the player is drawn in. */
-    fun setSkin(skin: CharacterSkin) { world.skin = skin }
+    fun setCharacter(character: GameCharacter) { world.character = character }
 
     /** Coins, kills, shots and time of this stretch of play, for saving. */
     fun runTotals(): RunTotals = world.runTotals()

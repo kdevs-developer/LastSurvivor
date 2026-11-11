@@ -77,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.HudState
+import com.kdevs.lastsurvivor.ui.DiamondIcon
 import com.kdevs.lastsurvivor.game.engine.WavePhase
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import com.kdevs.lastsurvivor.ui.weapons.nameRes
@@ -113,6 +114,9 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
                     Chip(Icons.Filled.GpsFixed, stringResource(R.string.hud_kills_format, hud.kills), colorResource(R.color.hud_banner_accent), popOnChange(hud.kills))
                     Chip(Icons.Filled.MonetizationOn, stringResource(R.string.hud_coins_format, hud.coins), colorResource(R.color.coin_gold), popOnChange(hud.coins))
                     Chip(Icons.Filled.Whatshot, stringResource(R.string.hud_grenades_format, hud.grenades), colorResource(R.color.grenade_flash), popOnChange(hud.grenades))
+                    if (hud.diamonds > 0) {
+                        Chip(DiamondIcon, stringResource(R.string.hud_diamonds_format, hud.diamonds), colorResource(R.color.powerup_diamond), popOnChange(hud.diamonds))
+                    }
                 }
                 // Active power-up buffs with seconds left
                 if (hud.rapidFireSeconds > 0 || hud.damageBoostSeconds > 0 || hud.shieldSeconds > 0) {

@@ -3,7 +3,7 @@ package com.kdevs.lastsurvivor.game.render
 import android.content.Context
 import androidx.annotation.ColorRes
 import com.kdevs.lastsurvivor.R
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 
 /** The four colours that change between outfits. */
 class SkinPalette(val body: Int, val arm: Int, val pack: Int, val hair: Int)
@@ -69,11 +69,13 @@ class GameColors(context: Context) {
     val reloadBarBack = c(R.color.reload_bar_back)
     val reloadBarFill = c(R.color.reload_bar_fill)
 
-    // power-ups, indexed by PowerUpType.ordinal: MEDKIT, RAPID_FIRE, DOUBLE_DAMAGE, SHIELD, GRENADE
+    // power-ups, indexed by PowerUpType.ordinal: MEDKIT, RAPID_FIRE, DOUBLE_DAMAGE, SHIELD, GRENADE, DIAMOND
     val powerUp = intArrayOf(
         c(R.color.powerup_medkit), c(R.color.powerup_rapid), c(R.color.powerup_damage),
-        c(R.color.powerup_shield), c(R.color.powerup_grenade)
+        c(R.color.powerup_shield), c(R.color.powerup_grenade), c(R.color.powerup_diamond)
     )
+    val turretBody = c(R.color.turret_body)
+    val turretBarrel = c(R.color.turret_barrel)
     val powerUpSymbol = c(R.color.powerup_symbol)
     val powerUpRing = c(R.color.powerup_ring)
     val shieldBubble = c(R.color.shield_bubble)
@@ -127,12 +129,14 @@ class GameColors(context: Context) {
     val damageNumberKill = c(R.color.damage_number_kill)
     val damageNumberOutline = c(R.color.damage_number_outline)
 
-    /** The colours for [skin]. The default outfit uses the original player colours above. */
-    fun skinPalette(skin: CharacterSkin): SkinPalette = when (skin) {
-        CharacterSkin.SURVIVOR -> SkinPalette(playerBody, playerArm, playerPack, playerHair)
-        CharacterSkin.RANGER -> SkinPalette(c(R.color.skin_ranger_body), c(R.color.skin_ranger_arm), c(R.color.skin_ranger_pack), c(R.color.skin_ranger_hair))
-        CharacterSkin.SCAVENGER -> SkinPalette(c(R.color.skin_scavenger_body), c(R.color.skin_scavenger_arm), c(R.color.skin_scavenger_pack), c(R.color.skin_scavenger_hair))
-        CharacterSkin.SHADOW -> SkinPalette(c(R.color.skin_shadow_body), c(R.color.skin_shadow_arm), c(R.color.skin_shadow_pack), c(R.color.skin_shadow_hair))
+    /** The colours for [character]'s outfit. Survivor uses the original player colours above. */
+    fun skinPalette(character: GameCharacter): SkinPalette = when (character) {
+        GameCharacter.SURVIVOR -> SkinPalette(playerBody, playerArm, playerPack, playerHair)
+        GameCharacter.RUNNER -> SkinPalette(c(R.color.char_runner_body), c(R.color.char_runner_arm), c(R.color.char_runner_pack), c(R.color.char_runner_hair))
+        GameCharacter.TANK -> SkinPalette(c(R.color.char_tank_body), c(R.color.char_tank_arm), c(R.color.char_tank_pack), c(R.color.char_tank_hair))
+        GameCharacter.MEDIC -> SkinPalette(c(R.color.char_medic_body), c(R.color.char_medic_arm), c(R.color.char_medic_pack), c(R.color.char_medic_hair))
+        GameCharacter.ENGINEER -> SkinPalette(c(R.color.char_engineer_body), c(R.color.char_engineer_arm), c(R.color.char_engineer_pack), c(R.color.char_engineer_hair))
+        GameCharacter.COMMANDO -> SkinPalette(c(R.color.char_commando_body), c(R.color.char_commando_arm), c(R.color.char_commando_pack), c(R.color.char_commando_hair))
     }
 
     // shooting

@@ -29,6 +29,26 @@ Open this folder in Android Studio (Otter 3 Feature Drop or newer; AGP 9 + Gradl
 - **Fonts:** the system font is still used. For the premium look, drop a font such as Orbitron or Rajdhani into `res/font/` and set it as the `fontFamily` in `ui/theme/Theme.kt` typography.
 - Not compiled in the build sandbox (no Android SDK): Sync, Build and run, then check the title flicker, the pulse ring and the lightning brightness on your device.
 
+**2. Characters and diamonds** (`game/entities/GameCharacter.kt`, `AbilityType.kt`, `Turret.kt`, `ui/character/`)
+
+- **Six characters**, one active ability each. Survivor is free; the others are bought with **diamonds** that zombies drop (prices are `diamondPrice` in `GameCharacter`):
+
+| Character | Price | Stats | Ability (cooldown) |
+|---|---|---|---|
+| Survivor | free | balanced | Adrenaline: +50% speed for 4 s (20 s) |
+| Runner | 50 | health -25%, speed +25% | Dash: 0.2 s burst, no damage taken (6 s) |
+| Tank | 100 | health +50%, speed -15%, damage taken -20% | Shockwave: 45 damage, knock-back and 1.5 s stun in a 320 radius (14 s) |
+| Medic | 150 | regenerates 0.8 HP/s | Heal Pulse: 45 health over 3 s, cures poison (18 s) |
+| Engineer | 200 | health -10% | Turret: auto-fires for 10 s, one at a time (25 s) |
+| Commando | 300 | reload time -30%, magazine +30% | Rage: rapid fire and double damage for 6 s (25 s) |
+
+- **Diamonds:** a diamond pickup drops from a zombie with `ZombieType.diamondChance` (Walker 3%, Runner 4%, Toxic 6%, Tank 15%); bosses drop 5 (`GameConfig.BOSS_DIAMOND_DROPS`). Diamonds are a `PowerUpType.DIAMOND` with weight 0, so the normal power-up table never rolls them. They stay 20 s on the ground. They are banked with the run like coins (`RunTotals.diamonds`) and shown in the HUD, on the game over screen, on the main menu and on the Characters screen.
+- **Ability button:** a round button above Reload. Its ring fills while the ability recharges and the button lights up when ready (`HudState.abilityPercent`). Dash goes the way the move stick points (or where the player faces); the Turret is placed in front of the player. Tune the numbers in `GameConfig` (`ADRENALINE_*`, `DASH_*`, `SHOCKWAVE_*`, `HEAL_PULSE_*`, `TURRET_*`, `RAGE_SECONDS`) and the cooldowns in `AbilityType`. The ability texts in `strings_character.xml` repeat those numbers, so change both together.
+- **Characters screen** (the old outfit picker, menu button now named Characters): arrows browse the six characters, with stat changes, the ability, and a Select / Unlock button. Locked characters are dimmed and show the price; if you cannot afford one it says how many diamonds are missing. Buying also selects the character. The chosen character is used by Play, Retry and Continue.
+- **Saving:** `diamonds`, `unlocked_characters` and `selected_character` in DataStore (`PlayerPrefsRepository.unlockCharacter` spends diamonds inside one transaction). An unowned or unknown saved choice falls back to Survivor. The old outfit choice is ignored. Reset progress also clears diamonds and unlocked characters.
+- **Turret bullets** are marked `Bullet.fromTurret`, so they do not count towards shots fired or accuracy.
+- **Not compiled in the build sandbox** (no Android SDK or Kotlin compiler): sync, build and run `testDebugUnitTest`, then check the ability button position, the Characters screen on your screen sizes, and the diamond and ability balance by playing.
+
 ## Phase 10: DataStore, Optimization and Testing
 
 All ten phases are done. This phase adds saving, the two screens that were still placeholders, a performance pass and unit tests.
@@ -40,7 +60,7 @@ All ten phases are done. This phase adds saving, the two screens that were still
 | Coins, best wave | Main menu, upgrades |
 | Unlocked weapons, equipped weapon, upgrade levels | Upgrades screen, each run |
 | Options: sound, screen shake, gore level, damage numbers, FPS counter | Settings screen, applied to the engine at the start of a run |
-| Outfit | Character screen, player sprite |
+| Diamonds, unlocked characters, chosen character | Characters screen, main menu, each run |
 | Lifetime statistics: runs, kills, bosses, shots, hits, coins earned, time played | Character screen |
 | Checkpoint: wave, health, grenades | Continue button |
 
@@ -52,7 +72,7 @@ All ten phases are done. This phase adds saving, the two screens that were still
 
 **Settings screen** (`ui/settings/`): switches for sound, screen shake, damage numbers and "Show FPS and debug info", and Off / Low / Normal for blood and gore. These replaced the `SCREEN_SHAKE_ENABLED`, `GORE_AMOUNT`, `SHOW_DAMAGE_NUMBERS` and `SHOW_DEBUG_OVERLAY` constants in `GameConfig`; the defaults are the same as before (`game/engine/GameSettings.kt`).
 
-**Character screen** (`ui/character/`): pick one of four outfits (Survivor, Ranger, Scavenger, Shadow) and read your lifetime statistics. Outfits recolour the jacket, sleeves, backpack and hair of the generated sprite (`SkinPalette`, colours in `colors_character.xml`). If you drop in real `player_*.png` art (see `assets/sprites/README.txt`) it is used as it is and the outfit choice has no effect on it.
+**Character screen** (`ui/character/`): read your lifetime statistics. (It started as a picker for four outfits; it is now the Characters screen described in Enhancements, item 2.) Each character recolours the jacket, sleeves, backpack and hair of the generated sprite (`SkinPalette`, colours in `colors_character.xml`). If you drop in real `player_*.png` art (see `assets/sprites/README.txt`) it is used as it is and the character's colours have no effect on it.
 
 **Optimization**
 - A paused game redraws 15 times a second instead of 60 (`GameConfig.PAUSED_FPS`), which saves battery and heat while the pause menu is open.
@@ -67,10 +87,10 @@ All ten phases are done. This phase adds saving, the two screens that were still
 | `GameWorldTest` | The real simulation, headless: wave countdown, Continue (wave, health floor, clamped values, boss wave), restart, kills/coins/shots/time in the run totals, time stops at death, shake and gore settings |
 | `PlayerStatsTest` | Stats arithmetic, saturation, accuracy, play time, `RunTotals.minus` never negative |
 | `RunCheckpointTest` | Checkpoint encode/decode and rejection of damaged text |
-| `CharacterSkinTest` | Saved outfit names, fallback |
+| `GameCharacterTest` | Saved character names, fallback, prices, one ability each |
 | `CollisionTest` | Swept bullet-vs-circle hits, misses, fast bullets, ordering |
 | `WeaponTest` | Upgrade maths and costs, magazine and reload, object pool |
-| `PlayerPrefsRepositoryTest` | A real DataStore in a temporary file: banking, checkpoint lifecycle, settings, outfit, clamping, purchases, reset |
+| `PlayerPrefsRepositoryTest` | A real DataStore in a temporary file: banking, checkpoint lifecycle, settings, diamonds, buying and choosing characters, clamping, purchases, reset |
 
 - **Verification status:** all tests except `PlayerPrefsRepositoryTest` were compiled and run (38 tests, all passing) against the pure-Kotlin parts of the game in the build sandbox. The Compose screens, the renderer, DataStore and `PlayerPrefsRepositoryTest` need the Android SDK, which was not available there, so they were checked by reading only. Run **Sync, then Build, then `testDebugUnitTest`** first, and fix any compile error in those files (most likely a missing import or a changed API) before playing.
 - **Still to judge on a device:** the Ranger, Scavenger and Shadow colours, the Settings and Character layouts on your screen sizes, and that Continue feels right (wave restarts with a countdown).
@@ -178,7 +198,7 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 | `strings.xml` | App name and shared strings |
 | `strings_menu.xml` | Main menu |
 | `strings_settings.xml` | Settings screen |
-| `strings_character.xml` | Character screen: outfits and statistics |
+| `strings_character.xml` | Characters screen: characters, abilities, statistics |
 | `strings_game.xml` | Game screen, pause and game over overlays |
 | `strings_controls.xml` | On-screen control descriptions |
 | `strings_hud.xml` | In-game HUD and debug overlay |
@@ -186,13 +206,13 @@ Nothing visual or textual is hard-coded in Kotlin any more.
 | `strings_powerups.xml` | Power-ups, grenades and boss fights (HUD banner, boss names) |
 | `strings_audio.xml` | Sound switch |
 
-Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`, Phase 9 colors (particles, stains, sprite details, overlays, damage numbers) in `colors_effects.xml`, Phase 10 colors (outfits, character screen) in `colors_character.xml`.
+Add new strings to the file of the module they belong to, and new colors under that module's section in `colors.xml`. Phase 8 colors live in `colors_powerups.xml`, Phase 9 colors (particles, stains, sprite details, overlays, damage numbers) in `colors_effects.xml`, Phase 10 colors (character outfits, ability button, character screen) in `colors_character.xml`.
 
 ## Project layout
 
 ```
 game/engine    GameLoop, GameWorld, GameConfig, GameSettings, RunTotals, WaveManager, HudState, Collision, Camera, InputState, ObjectPool
-game/entities  Entity, Player, Zombie, ZombieType, CharacterSkin, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
+game/entities  Entity, Player, Zombie, ZombieType, GameCharacter, AbilityType, Turret, Bullet, ImpactEffect, PowerUp, PowerUpType, Grenade, ExplosionEffect
 game/weapons   WeaponType, WeaponStats (+ UpgradeConfig), WeaponState, WeaponInventory
 game/render    GameRenderer, GameColors, SpriteAtlas, PlaceholderSprites
 game/effects   ParticleSystem, DecalField, FloatingTexts
@@ -200,12 +220,12 @@ game/audio     SoundEffect, GameAudio, SoundManager
 tools          generate_sfx.py (makes res/raw/*.wav)
 ui/menu        Main menu
 ui/settings    SettingsScreen, SettingsViewModel
-ui/character   CharacterScreen, CharacterViewModel, SkinLabels
+ui/character   CharacterScreen, CharacterViewModel, CharacterLabels (+ ui/DiamondIcon)
 ui/upgrades    UpgradesScreen, UpgradesViewModel
 ui/weapons     WeaponLabels (weapon and upgrade names for the UI)
 ui/game        GameScreen, GameOverOverlay, GameSessionViewModel, hud (GameHud), controls (joysticks and buttons)
 ui/theme       Compose Material 3 theme
 ui             Sounds.kt (rememberSoundManager for UI click sounds)
-data           PlayerPrefsRepository (DataStore: progress, weapons, settings, outfit, statistics, checkpoint), PlayerStats, RunCheckpoint
+data           PlayerPrefsRepository (DataStore: progress, diamonds, weapons, characters, settings, statistics, checkpoint), PlayerStats, RunCheckpoint
 app/src/test   Unit tests (see Phase 10)
 ```

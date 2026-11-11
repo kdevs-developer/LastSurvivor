@@ -5,4 +5,5 @@
     <string name="control_fire">Fire</string>
     <string name="control_reload">Reload</string>
     <string name="control_grenade">Grenade</string>
+    <string name="control_ability">Ability</string>
 </resources>

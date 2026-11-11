@@ -1,5 +1,6 @@
 package com.kdevs.lastsurvivor.ui.game.controls
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -17,7 +18,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.colorResource
@@ -29,7 +33,8 @@ import com.kdevs.lastsurvivor.R
  * Round on-screen button. [onPressChanged] is called with true on touch-down and false on
  * release (or cancellation), which supports both hold buttons and tap buttons (reload, grenade
  * and the sprint toggle act on `true`). The finger may drift outside the button while held.
- * [active] lights the button up while a toggle it controls is switched on (sprint).
+ * [active] lights the button up while a toggle it controls is switched on (sprint), or while an ability is ready.
+ * [progress] below 1 draws a ring that fills as a cooldown recovers and dims the icon; 1 = nothing drawn.
  */
 @Composable
 fun ActionButton(
@@ -39,6 +44,7 @@ fun ActionButton(
     color: Color,
     modifier: Modifier = Modifier,
     active: Boolean = false,
+    progress: Float = 1f,
     onPressChanged: (pressed: Boolean) -> Unit
 ) {
     val currentCallback by rememberUpdatedState(onPressChanged)
@@ -69,8 +75,22 @@ fun ActionButton(
         Icon(
             imageVector = icon,
             contentDescription = description,
-            tint = colorResource(R.color.control_icon),
+            tint = colorResource(R.color.control_icon).copy(alpha = if (progress < 1f) 0.5f else 1f),
             modifier = Modifier.size(diameter * 0.5f)
         )
+        if (progress < 1f) {
+            Canvas(modifier = Modifier.size(diameter)) {
+                val w = 4.dp.toPx()
+                drawArc(
+                    color = color.copy(alpha = 0.95f),
+                    startAngle = -90f,
+                    sweepAngle = 360f * progress.coerceIn(0f, 1f),
+                    useCenter = false,
+                    topLeft = Offset(w, w),
+                    size = Size(size.width - 2f * w, size.height - 2f * w),
+                    style = Stroke(width = w * 2f)
+                )
+            }
+        }
     }
 }

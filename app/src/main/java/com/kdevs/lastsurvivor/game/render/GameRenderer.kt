@@ -175,7 +175,7 @@ class GameRenderer(context: Context) {
 
     fun render(canvas: Canvas, world: GameWorld, fps: Int, paused: Boolean) {
         canvas.drawColor(colors.clear)
-        sprites.applySkin(world.skin) // no-op unless the outfit was changed
+        sprites.applySkin(world.character) // no-op unless the outfit was changed
 
         canvas.save()
         // the camera position plus this tick's shake offset
@@ -189,6 +189,7 @@ class GameRenderer(context: Context) {
 
         drawPowerUps(canvas, world)
         drawBossWarnings(canvas, world)
+        drawTurrets(canvas, world)
         drawZombies(canvas, world)
         drawGrenades(canvas, world)
         drawBullets(canvas, world)   // before the player: bullets appear to leave the barrel
@@ -231,6 +232,7 @@ class GameRenderer(context: Context) {
         val p = world.player
         canvas.drawCircle(p.x + 6f, p.y + 8f, p.radius, shadowPaint)
         if (p.damageBoost) canvas.drawCircle(p.x, p.y, p.radius + 10f, auraPaint)
+        if (p.adrenaline || p.dashing) canvas.drawCircle(p.x, p.y, p.radius + 8f, powerUpRingPaint)
         val weaponType = world.weapon.stats.type
         val sprite = sprites.playerSprites[weaponType.ordinal][playerFrame(world)]
         val half = sprite.width / 2f
@@ -343,6 +345,37 @@ class GameRenderer(context: Context) {
                 canvas.drawCircle(cx, cy + s * 0.2f, s * 0.9f, symbolFillPaint)
                 canvas.drawLine(cx, cy - s * 0.7f, cx + s * 0.5f, cy - s * 1.2f, symbolPaint)
             }
+            PowerUpType.DIAMOND -> {
+                // a cut gem: a rhombus with a line across it
+                canvas.drawLine(cx, cy - s * 1.2f, cx + s * 1.1f, cy - s * 0.2f, symbolPaint)
+                canvas.drawLine(cx + s * 1.1f, cy - s * 0.2f, cx, cy + s * 1.2f, symbolPaint)
+                canvas.drawLine(cx, cy + s * 1.2f, cx - s * 1.1f, cy - s * 0.2f, symbolPaint)
+                canvas.drawLine(cx - s * 1.1f, cy - s * 0.2f, cx, cy - s * 1.2f, symbolPaint)
+                canvas.drawLine(cx - s * 1.1f, cy - s * 0.2f, cx + s * 1.1f, cy - s * 0.2f, symbolPaint)
+            }
+        }
+    }
+
+    /** The Engineer's turret: a round base with a barrel that turns towards its target. Blinks before it expires. */
+    private fun drawTurrets(canvas: Canvas, world: GameWorld) {
+        val list = world.turrets
+        var i = 0
+        while (i < list.size) {
+            val t = list[i]
+            i++
+            if (t.expiring && ((t.age * 8f).toInt() and 1) == 0) continue
+            val drop = (t.age / 0.25f).coerceIn(0f, 1f) // grows in when placed
+            val r = t.radius * (0.5f + 0.5f * drop)
+            canvas.drawCircle(t.x + 4f, t.y + 6f, r, shadowPaint)
+            powerUpPaint.color = colors.turretBody
+            canvas.drawCircle(t.x, t.y, r, powerUpPaint)
+            canvas.drawCircle(t.x, t.y, r, powerUpRingPaint)
+            symbolPaint.color = colors.turretBarrel
+            symbolPaint.strokeWidth = 9f
+            canvas.drawLine(t.x, t.y, t.x + cos(t.rotation) * (r + 14f), t.y + sin(t.rotation) * (r + 14f), symbolPaint)
+            symbolPaint.color = colors.powerUpSymbol
+            symbolPaint.strokeWidth = 5f
+            canvas.drawCircle(t.x, t.y, r * 0.35f, symbolFillPaint)
         }
     }
 

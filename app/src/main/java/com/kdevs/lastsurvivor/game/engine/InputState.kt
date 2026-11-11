@@ -25,17 +25,20 @@ class InputState {
     // One-shot buttons
     private val reloadRequested = AtomicBoolean(false)
     private val grenadeRequested = AtomicBoolean(false)
+    private val abilityRequested = AtomicBoolean(false)
 
     fun requestReload() = reloadRequested.set(true)
     fun requestGrenade() = grenadeRequested.set(true)
+    fun requestAbility() = abilityRequested.set(true)
     fun consumeReload(): Boolean = reloadRequested.getAndSet(false)
     fun consumeGrenade(): Boolean = grenadeRequested.getAndSet(false)
+    fun consumeAbility(): Boolean = abilityRequested.getAndSet(false)
 
     /** Clears everything, e.g. on pause, so no input stays "stuck". */
     fun reset() {
         moveX = 0f; moveY = 0f
         aimX = 0f; aimY = 0f; aimActive = false; aimStrength = 0f
         fireHeld = false; sprintHeld = false
-        reloadRequested.set(false); grenadeRequested.set(false)
+        reloadRequested.set(false); grenadeRequested.set(false); abilityRequested.set(false)
     }
 }

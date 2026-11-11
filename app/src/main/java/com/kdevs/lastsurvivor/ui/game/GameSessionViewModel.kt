@@ -9,7 +9,7 @@ import com.kdevs.lastsurvivor.data.persistenceScope
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.HudState
 import com.kdevs.lastsurvivor.game.engine.RunTotals
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -95,7 +95,8 @@ class GameSessionViewModel(app: Application) : AndroidViewModel(app) {
     /** The equipped weapon with its saved upgrades. */
     suspend fun loadEquippedWeapon(): WeaponStats = repository.weapons.first().equippedStats()
 
-    suspend fun loadSkin(): CharacterSkin = repository.skin.first()
+    /** The character chosen on the Survivor screen (Survivor if the choice is not owned). */
+    suspend fun loadCharacter(): GameCharacter = repository.character.first()
 
     suspend fun loadCheckpoint(): RunCheckpoint? = repository.checkpoint.first()
 }

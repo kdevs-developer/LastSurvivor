@@ -15,7 +15,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.game.engine.RunTotals
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.weapons.UpgradeConfig
 import com.kdevs.lastsurvivor.game.weapons.UpgradeTrack
 import com.kdevs.lastsurvivor.game.weapons.WeaponInventory
@@ -43,7 +43,14 @@ val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
 data class PlayerProgress(
     val coins: Int = 0,
-    val highestWave: Int = 0
+    val highestWave: Int = 0,
+    val diamonds: Int = 0
+)
+
+/** Which characters the player owns and which one is chosen for the next run. */
+data class CharacterInventory(
+    val unlocked: Set<GameCharacter> = setOf(GameCharacter.SURVIVOR),
+    val selected: GameCharacter = GameCharacter.SURVIVOR
 )
 
 /**
@@ -51,7 +58,7 @@ data class PlayerProgress(
  *  - progress: coins and the highest wave (Phase 1)
  *  - weapons: unlocked, equipped and upgrade levels (Phase 7)
  *  - settings: sound (Phase 9), screen shake, gore, damage numbers, FPS counter (Phase 10)
- *  - character: the chosen outfit (Phase 10)
+ *  - characters: diamonds, unlocked characters and the chosen one
  *  - stats: lifetime totals (Phase 10)
  *  - checkpoint: the start of the current wave, for Continue (Phase 10)
  *
@@ -73,7 +80,9 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         val GORE = stringPreferencesKey("gore_level")
         val DAMAGE_NUMBERS = booleanPreferencesKey("damage_numbers")
         val SHOW_FPS = booleanPreferencesKey("show_fps")
-        val SKIN = stringPreferencesKey("character_skin")
+        val DIAMONDS = intPreferencesKey("diamonds")
+        val UNLOCKED_CHARACTERS = stringSetPreferencesKey("unlocked_characters")
+        val SELECTED_CHARACTER = stringPreferencesKey("selected_character")
         val CHECKPOINT = stringPreferencesKey("run_checkpoint")
         val STAT_RUNS = intPreferencesKey("stat_runs")
         val STAT_KILLS = intPreferencesKey("stat_kills")
@@ -95,7 +104,13 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         .catch { if (it is IOException) emit(emptyPreferences()) else throw it }
 
     val progress: Flow<PlayerProgress> = data
-        .map { PlayerProgress(coins = (it[Keys.COINS] ?: 0).coerceAtLeast(0), highestWave = (it[Keys.HIGHEST_WAVE] ?: 0).coerceAtLeast(0)) }
+        .map {
+            PlayerProgress(
+                coins = (it[Keys.COINS] ?: 0).coerceAtLeast(0),
+                highestWave = (it[Keys.HIGHEST_WAVE] ?: 0).coerceAtLeast(0),
+                diamonds = (it[Keys.DIAMONDS] ?: 0).coerceAtLeast(0)
+            )
+        }
         .distinctUntilChanged()
 
     suspend fun addCoins(amount: Int) {
@@ -137,12 +152,43 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
 
     suspend fun setSoundEnabled(enabled: Boolean) = updateSettings { it.copy(soundEnabled = enabled) }
 
-    // ---------------- Character (Phase 10) ----------------
+    // ---------------- Characters and diamonds ----------------
 
-    val skin: Flow<CharacterSkin> = data.map { CharacterSkin.fromName(it[Keys.SKIN]) }.distinctUntilChanged()
+    private fun Preferences.toCharacters(): CharacterInventory {
+        val unlocked = (this[Keys.UNLOCKED_CHARACTERS] ?: emptySet())
+            .mapNotNull { name -> GameCharacter.entries.firstOrNull { it.name == name } }
+            .toSet() + GameCharacter.SURVIVOR
+        val selected = GameCharacter.entries.firstOrNull { it.name == this[Keys.SELECTED_CHARACTER] }
+            ?.takeIf { it in unlocked } ?: GameCharacter.SURVIVOR
+        return CharacterInventory(unlocked, selected)
+    }
 
-    suspend fun setSkin(skin: CharacterSkin) {
-        store.edit { it[Keys.SKIN] = skin.name }
+    /** Owned characters (Survivor always) and the chosen one; an unowned or unknown choice falls back to Survivor. */
+    val characters: Flow<CharacterInventory> = data.map { it.toCharacters() }.distinctUntilChanged()
+
+    /** The character to play in the next run. */
+    val character: Flow<GameCharacter> = data.map { it.toCharacters().selected }.distinctUntilChanged()
+
+    /** Buys [character] with diamonds if the player can afford it and does not own it yet. Returns true on success. */
+    suspend fun unlockCharacter(character: GameCharacter): Boolean {
+        var bought = false
+        store.edit { prefs ->
+            val owned = prefs.toCharacters().unlocked
+            val diamonds = (prefs[Keys.DIAMONDS] ?: 0).coerceAtLeast(0)
+            if (character !in owned && diamonds >= character.diamondPrice) {
+                prefs[Keys.DIAMONDS] = diamonds - character.diamondPrice
+                prefs[Keys.UNLOCKED_CHARACTERS] = (owned + character).map { it.name }.toSet()
+                bought = true
+            }
+        }
+        return bought
+    }
+
+    /** Chooses an owned character for the next run; ignored if the player does not own it. */
+    suspend fun selectCharacter(character: GameCharacter) {
+        store.edit { prefs ->
+            if (character in prefs.toCharacters().unlocked) prefs[Keys.SELECTED_CHARACTER] = character.name
+        }
     }
 
     // ---------------- Statistics and run saving (Phase 10) ----------------
@@ -193,6 +239,9 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
     suspend fun bankRun(delta: RunTotals, wave: Int, checkpoint: RunCheckpoint? = null, clearCheckpoint: Boolean = false) {
         store.edit { prefs ->
             prefs[Keys.COINS] = ((prefs[Keys.COINS] ?: 0).coerceAtLeast(0).toLong() + delta.coins).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            if (delta.diamonds > 0) {
+                prefs[Keys.DIAMONDS] = ((prefs[Keys.DIAMONDS] ?: 0).coerceAtLeast(0).toLong() + delta.diamonds).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
+            }
             if (wave > (prefs[Keys.HIGHEST_WAVE] ?: 0)) prefs[Keys.HIGHEST_WAVE] = wave
             prefs.putStats(prefs.toStats() + delta)
             when {
@@ -202,7 +251,7 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         }
     }
 
-    /** Erases coins, best wave, weapons, outfit, statistics and the checkpoint. Options are kept. */
+    /** Erases coins, diamonds, best wave, weapons, characters, statistics and the checkpoint. Options are kept. */
     suspend fun resetProgress() {
         store.edit { prefs ->
             val doomed = prefs.asMap().keys.filter { it.name !in Keys.KEPT_ON_RESET }

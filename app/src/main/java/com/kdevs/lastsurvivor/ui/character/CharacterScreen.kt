@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -27,6 +29,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,6 +39,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -45,6 +50,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -54,8 +60,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.data.PlayerStats
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.AbilityType
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
+import com.kdevs.lastsurvivor.ui.DiamondIcon
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
+import java.util.Locale
+import kotlin.math.roundToInt
 
 /** Content never stretches wider than this, so tablets and TVs get a centred, readable layout. */
 private val MaxContentWidth: Dp = 1000.dp
@@ -68,7 +78,9 @@ private val CompactHeight: Dp = 400.dp
 
 private class CharacterActions(
     val onBack: () -> Unit,
-    val onStep: (Int) -> Unit
+    val onStep: (Int) -> Unit,
+    val onSelect: () -> Unit,
+    val onUnlock: () -> Unit
 )
 
 /** One tile of the statistics grid; [span] is how many grid columns it takes. */
@@ -81,8 +93,9 @@ private class StatTile(
 )
 
 /**
- * Survivor screen: a showcase of the chosen outfit (arrows flip through outfits and save the choice)
- * with the lifetime statistics as tiles. Adapts to the space it gets:
+ * Characters screen: a showcase of one character at a time (arrows flip through the six), with its stats,
+ * its ability and a Select / Unlock button, and the lifetime statistics as tiles. Locked characters are
+ * bought with diamonds. Adapts to the space it gets:
  *  - landscape: header, showcase panel (fills the height), stats in two rows of four columns;
  *  - short landscape: the page scrolls and the panel keeps a fixed height;
  *  - portrait: the character sits above its details and the stats form a two-column grid (scrolls).
@@ -91,18 +104,15 @@ private class StatTile(
 fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val sounds = rememberSoundManager()
-    val skins = CharacterSkin.entries
 
     val actions = CharacterActions(
         onBack = {
             sounds.play(SoundEffect.UI_CLICK)
             onBack()
         },
-        onStep = { delta ->
-            sounds.play(SoundEffect.UI_CLICK)
-            val index = skins.indexOf(state.skin)
-            viewModel.selectSkin(skins[(index + delta + skins.size) % skins.size])
-        }
+        onStep = viewModel::step,
+        onSelect = viewModel::select,
+        onUnlock = viewModel::unlock
     )
 
     BoxWithConstraints(
@@ -128,7 +138,7 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
                         .padding(pad),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Header(actions)
+                    Header(actions, state.progress.diamonds)
                     ShowcasePanel(
                         state = state,
                         actions = actions,
@@ -145,7 +155,7 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
                         .padding(pad),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Header(actions)
+                    Header(actions, state.progress.diamonds)
                     ShowcasePanel(state, actions, stacked = false, modifier = Modifier.weight(1f))
                     StatsGrid(state, columns = columns, compact = compact)
                 }
@@ -159,7 +169,7 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun Header(actions: CharacterActions) {
+private fun Header(actions: CharacterActions, diamonds: Int) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -189,6 +199,26 @@ private fun Header(actions: CharacterActions) {
             letterSpacing = 3.sp,
             maxLines = 1
         )
+        Spacer(Modifier.weight(1f))
+        // diamond balance: what the locked characters cost is paid from here
+        val pill = RoundedCornerShape(50)
+        Row(
+            modifier = Modifier
+                .clip(pill)
+                .background(colorResource(R.color.neon_panel))
+                .border(1.dp, colorResource(R.color.neon_border), pill)
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Icon(DiamondIcon, contentDescription = null, tint = colorResource(R.color.powerup_diamond), modifier = Modifier.size(18.dp))
+            Text(
+                stringResource(R.string.character_diamonds_format, diamonds),
+                fontWeight = FontWeight.Bold,
+                color = colorResource(R.color.neon_title),
+                style = MaterialTheme.typography.labelLarge
+            )
+        }
     }
 }
 
@@ -218,17 +248,17 @@ private fun ShowcasePanel(
         Column(modifier = panel.padding(horizontal = 6.dp, vertical = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ArrowButton(Icons.Filled.ChevronLeft, R.string.character_previous) { actions.onStep(-1) }
-                SurvivorArt(state.skin, Modifier.weight(1f).height(150.dp).padding(8.dp))
+                SurvivorArt(state.viewing, Modifier.weight(1f).height(150.dp).padding(8.dp).alpha(if (state.owned) 1f else 0.5f))
                 ArrowButton(Icons.Filled.ChevronRight, R.string.character_next) { actions.onStep(1) }
             }
-            OutfitInfo(state.skin, Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), centered = true)
+            CharacterInfo(state, actions, Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), centered = true)
         }
     } else {
         Row(modifier = panel.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             ArrowButton(Icons.Filled.ChevronLeft, R.string.character_previous) { actions.onStep(-1) }
-            SurvivorArt(state.skin, Modifier.weight(1f).fillMaxHeight().padding(10.dp))
+            SurvivorArt(state.viewing, Modifier.weight(1f).fillMaxHeight().padding(10.dp).alpha(if (state.owned) 1f else 0.5f))
             Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
-                OutfitInfo(state.skin, Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp), centered = false)
+                CharacterInfo(state, actions, Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp), centered = false)
             }
             ArrowButton(Icons.Filled.ChevronRight, R.string.character_next) { actions.onStep(1) }
         }
@@ -247,11 +277,13 @@ private fun ArrowButton(icon: ImageVector, descriptionRes: Int, onClick: () -> U
     }
 }
 
-/** Outfit name, "Outfit 2 of 4", page dots and the SELECTED badge. */
+/** Name, role, stat changes, the ability, page dots and the Select / Unlock button. */
 @Composable
-private fun OutfitInfo(skin: CharacterSkin, modifier: Modifier = Modifier, centered: Boolean) {
-    val skins = CharacterSkin.entries
+private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, modifier: Modifier = Modifier, centered: Boolean) {
+    val character = state.viewing
+    val all = GameCharacter.entries
     val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
+    val textAlign = if (centered) TextAlign.Center else TextAlign.Start
 
     Column(
         modifier = modifier,
@@ -259,7 +291,7 @@ private fun OutfitInfo(skin: CharacterSkin, modifier: Modifier = Modifier, cente
         verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Text(
-            stringResource(skin.nameRes()),
+            stringResource(character.nameRes()),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             color = colorResource(R.color.neon_title),
@@ -267,17 +299,87 @@ private fun OutfitInfo(skin: CharacterSkin, modifier: Modifier = Modifier, cente
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            stringResource(R.string.character_outfit_format, skins.indexOf(skin) + 1, skins.size),
+            stringResource(character.roleRes()),
             style = MaterialTheme.typography.bodySmall,
-            color = colorResource(R.color.neon_label)
+            color = colorResource(R.color.neon_label),
+            textAlign = textAlign
         )
+        Text(
+            traitsText(character),
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Bold,
+            color = colorResource(R.color.neon_green_dim),
+            textAlign = textAlign
+        )
+        AbilityRow(character.ability)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            for (entry in skins) {
-                PageDot(selected = entry == skin)
+            for (entry in all) {
+                PageDot(selected = entry == character)
             }
         }
         Text(
-            stringResource(R.string.skin_selected).uppercase(),
+            stringResource(R.string.character_index_format, all.indexOf(character) + 1, all.size),
+            style = MaterialTheme.typography.labelSmall,
+            color = colorResource(R.color.neon_label)
+        )
+        CharacterActionButton(state, actions)
+    }
+}
+
+/** What the character does better or worse than Survivor, as one line such as "Health -25% - Speed +25%". */
+@Composable
+private fun traitsText(c: GameCharacter): String {
+    fun pct(multiplier: Float): Int = ((multiplier - 1f) * 100f).roundToInt()
+    val parts = mutableListOf<String>()
+    if (c.healthMult != 1f) parts += stringResource(R.string.char_trait_health, pct(c.healthMult))
+    if (c.speedMult != 1f) parts += stringResource(R.string.char_trait_speed, pct(c.speedMult))
+    if (c.damageTakenMult != 1f) parts += stringResource(R.string.char_trait_damage_taken, pct(c.damageTakenMult))
+    if (c.regenPerSecond > 0f) parts += stringResource(R.string.char_trait_regen, String.format(Locale.getDefault(), "%.1f", c.regenPerSecond))
+    if (c.reloadTimeMult != 1f) parts += stringResource(R.string.char_trait_reload, pct(c.reloadTimeMult))
+    if (c.magazineMult != 1f) parts += stringResource(R.string.char_trait_magazine, pct(c.magazineMult))
+    return if (parts.isEmpty()) stringResource(R.string.char_trait_balanced) else parts.joinToString("  \u2022  ")
+}
+
+@Composable
+private fun AbilityRow(ability: AbilityType) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Icon(
+            ability.icon(),
+            contentDescription = null,
+            tint = colorResource(R.color.control_ability),
+            modifier = Modifier.size(24.dp)
+        )
+        Column {
+            Text(
+                stringResource(ability.nameRes()),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(R.color.neon_title)
+            )
+            Text(
+                stringResource(ability.descriptionRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = colorResource(R.color.neon_label)
+            )
+            Text(
+                stringResource(R.string.character_cooldown_format, ability.cooldownSeconds.roundToInt()),
+                style = MaterialTheme.typography.labelSmall,
+                color = colorResource(R.color.neon_green_dim)
+            )
+        }
+    }
+}
+
+/** SELECTED badge for the chosen character, Select for an owned one, Unlock (with the diamond price) for a locked one. */
+@Composable
+private fun CharacterActionButton(state: CharacterUiState, actions: CharacterActions) {
+    val shape = RoundedCornerShape(10.dp)
+    when {
+        state.selected -> Text(
+            stringResource(R.string.character_selected).uppercase(),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
             color = colorResource(R.color.survivor_on_accent),
@@ -286,6 +388,40 @@ private fun OutfitInfo(skin: CharacterSkin, modifier: Modifier = Modifier, cente
                 .background(colorResource(R.color.neon_green))
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         )
+        state.owned -> Button(
+            onClick = actions.onSelect,
+            shape = shape,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorResource(R.color.neon_green),
+                contentColor = colorResource(R.color.survivor_on_accent)
+            )
+        ) {
+            Text(stringResource(R.string.character_select).uppercase(), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
+        }
+        else -> {
+            Button(
+                onClick = actions.onUnlock,
+                shape = shape,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colorResource(if (state.canAfford) R.color.powerup_diamond else R.color.neon_border),
+                    contentColor = colorResource(if (state.canAfford) R.color.survivor_on_accent else R.color.neon_label)
+                )
+            ) {
+                Icon(DiamondIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    stringResource(R.string.character_unlock_format, state.viewing.diamondPrice),
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            if (!state.canAfford) {
+                Text(
+                    stringResource(R.string.character_need_more_format, state.viewing.diamondPrice - state.progress.diamonds),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorResource(R.color.neon_label)
+                )
+            }
+        }
     }
 }
 
@@ -389,14 +525,14 @@ private fun playTime(stats: PlayerStats): String = when {
 
 // ---------------------------------------------------------------------------------------------
 // Character preview: the in-game top-down player, drawn on a 120 x 120 unit grid facing right,
-// scaled to fit whatever box it gets and centred in it. Outfit colours animate when it changes.
+// scaled to fit whatever box it gets and centred in it. Outfit colours animate when the character changes.
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun SurvivorArt(skin: CharacterSkin, modifier: Modifier = Modifier) {
-    val body by animateColorAsState(colorResource(skin.bodyColorRes()), label = "body")
-    val arm by animateColorAsState(colorResource(skin.armColorRes()), label = "arm")
-    val hair by animateColorAsState(colorResource(skin.hairColorRes()), label = "hair")
+private fun SurvivorArt(character: GameCharacter, modifier: Modifier = Modifier) {
+    val body by animateColorAsState(colorResource(character.bodyColorRes()), label = "body")
+    val arm by animateColorAsState(colorResource(character.armColorRes()), label = "arm")
+    val hair by animateColorAsState(colorResource(character.hairColorRes()), label = "hair")
     val skinTone = colorResource(R.color.player_skin)
     val weapon = colorResource(R.color.player_weapon)
     val ring = colorResource(R.color.neon_border)

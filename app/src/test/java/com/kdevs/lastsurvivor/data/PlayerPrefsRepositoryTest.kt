@@ -7,7 +7,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.game.engine.RunTotals
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.weapons.UpgradeConfig
 import com.kdevs.lastsurvivor.game.weapons.UpgradeTrack
 import com.kdevs.lastsurvivor.game.weapons.WeaponType
@@ -51,7 +51,8 @@ class PlayerPrefsRepositoryTest {
         assertEquals(PlayerProgress(), repo.progress.first())
         assertEquals(PlayerStats(), repo.stats.first())
         assertEquals(GameSettings(), repo.settings.first())
-        assertEquals(CharacterSkin.SURVIVOR, repo.skin.first())
+        assertEquals(GameCharacter.SURVIVOR, repo.character.first())
+        assertEquals(CharacterInventory(), repo.characters.first())
         assertNull(repo.checkpoint.first())
     }
 
@@ -114,9 +115,39 @@ class PlayerPrefsRepositoryTest {
         assertEquals(GoreLevel.NORMAL, repo.settings.first().gore)
     }
 
-    @Test fun `the chosen outfit is saved`() = runBlocking {
-        repo.setSkin(CharacterSkin.RANGER)
-        assertEquals(CharacterSkin.RANGER, repo.skin.first())
+    @Test fun `banking a run adds the diamonds found`() = runBlocking {
+        repo.bankRun(RunTotals(diamonds = 7), wave = 3)
+        repo.bankRun(RunTotals(diamonds = 5), wave = 3)
+        assertEquals(12, repo.progress.first().diamonds)
+    }
+
+    @Test fun `a character is bought with diamonds once`() = runBlocking {
+        repo.bankRun(RunTotals(diamonds = 60), wave = 1)
+        assertTrue(repo.unlockCharacter(GameCharacter.RUNNER)) // costs 50
+        assertFalse(repo.unlockCharacter(GameCharacter.RUNNER)) // already owned
+        assertEquals(10, repo.progress.first().diamonds)
+        assertFalse(repo.unlockCharacter(GameCharacter.TANK)) // cannot afford
+        assertEquals(10, repo.progress.first().diamonds)
+        assertTrue(GameCharacter.RUNNER in repo.characters.first().unlocked)
+        assertFalse(GameCharacter.TANK in repo.characters.first().unlocked)
+    }
+
+    @Test fun `only an owned character can be chosen`() = runBlocking {
+        repo.selectCharacter(GameCharacter.COMMANDO) // not owned: ignored
+        assertEquals(GameCharacter.SURVIVOR, repo.character.first())
+
+        repo.bankRun(RunTotals(diamonds = 50), wave = 1)
+        repo.unlockCharacter(GameCharacter.RUNNER)
+        repo.selectCharacter(GameCharacter.RUNNER)
+        assertEquals(GameCharacter.RUNNER, repo.character.first())
+
+        repo.selectCharacter(GameCharacter.SURVIVOR) // always owned
+        assertEquals(GameCharacter.SURVIVOR, repo.character.first())
+    }
+
+    @Test fun `a saved choice that is not owned falls back to Survivor`() = runBlocking {
+        store.edit { it[stringPreferencesKey("selected_character")] = GameCharacter.TANK.name }
+        assertEquals(GameCharacter.SURVIVOR, repo.character.first())
     }
 
     @Test fun `damaged numbers are clamped when read`() = runBlocking {
@@ -140,8 +171,9 @@ class PlayerPrefsRepositoryTest {
     }
 
     @Test fun `reset erases progress but keeps the options`() = runBlocking {
-        repo.bankRun(totals.copy(coins = 200), wave = 5, checkpoint = RunCheckpoint(5, 60, 1))
-        repo.setSkin(CharacterSkin.SHADOW)
+        repo.bankRun(totals.copy(coins = 200, diamonds = 80), wave = 5, checkpoint = RunCheckpoint(5, 60, 1))
+        repo.unlockCharacter(GameCharacter.RUNNER)
+        repo.selectCharacter(GameCharacter.RUNNER)
         repo.unlockWeapon(WeaponType.SMG)
         repo.updateSettings { it.copy(soundEnabled = false, gore = GoreLevel.OFF) }
 
@@ -149,7 +181,7 @@ class PlayerPrefsRepositoryTest {
 
         assertEquals(PlayerProgress(), repo.progress.first())
         assertEquals(PlayerStats(), repo.stats.first())
-        assertEquals(CharacterSkin.SURVIVOR, repo.skin.first())
+        assertEquals(CharacterInventory(), repo.characters.first())
         assertNull(repo.checkpoint.first())
         assertFalse(repo.weapons.first().owns(WeaponType.SMG))
         val s = repo.settings.first()

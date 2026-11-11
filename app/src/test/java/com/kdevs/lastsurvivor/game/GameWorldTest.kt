@@ -6,7 +6,9 @@ import com.kdevs.lastsurvivor.game.engine.GameWorld
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.game.engine.RunTotals
 import com.kdevs.lastsurvivor.game.engine.WavePhase
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
+import com.kdevs.lastsurvivor.game.entities.Player
+import com.kdevs.lastsurvivor.game.entities.PowerUpType
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
 import com.kdevs.lastsurvivor.game.weapons.WeaponType
@@ -157,11 +159,169 @@ class GameWorldTest {
         assertTrue(particlesAfterKill(GoreLevel.OFF) < particlesAfterKill(GoreLevel.NORMAL))
     }
 
-    @Test fun `the outfit is a plain property the renderer reads`() {
+    @Test fun `the character is a plain property the renderer reads`() {
         val w = newWorld()
-        assertEquals(CharacterSkin.SURVIVOR, w.skin)
-        w.skin = CharacterSkin.SHADOW
-        assertNotEquals(CharacterSkin.SURVIVOR, w.skin)
+        assertEquals(GameCharacter.SURVIVOR, w.character)
+        w.character = GameCharacter.MEDIC
+        assertNotEquals(GameCharacter.SURVIVOR, w.character)
         assertFalse(w.gameOver)
+    }
+
+    // ---------------------------------------------------------------- characters
+
+    @Test fun `a character's stats apply at the start of the next tick`() {
+        val w = newWorld()
+        w.character = GameCharacter.TANK
+        w.update(dt)
+        assertEquals(150, w.hud.value.maxHealth)
+        assertEquals(150, w.hud.value.health)
+        assertEquals(Player.BASE_SPEED * 0.85f, w.player.speed, 0.001f)
+        assertEquals(com.kdevs.lastsurvivor.game.entities.AbilityType.SHOCKWAVE, w.hud.value.ability)
+    }
+
+    @Test fun `the commando gets a bigger magazine and a faster reload`() {
+        val base = WeaponStats.of(WeaponType.PISTOL, emptyMap())
+        val w = GameWorld()
+        w.requestEquip(base)
+        w.character = GameCharacter.COMMANDO
+        w.update(dt)
+        assertEquals(Math.round(base.magazine * 1.3f), w.weapon.stats.magazine)
+        assertEquals(base.reloadSeconds * 0.7f, w.weapon.stats.reloadSeconds, 0.0001f)
+        assertEquals(w.weapon.stats.magazine, w.weapon.ammo)
+    }
+
+    @Test fun `survivor keeps the weapon's own numbers`() {
+        val base = WeaponStats.of(WeaponType.PISTOL, emptyMap())
+        val w = GameWorld()
+        w.requestEquip(base)
+        w.update(dt)
+        assertEquals(base, w.weapon.stats)
+    }
+
+    @Test fun `an ability starts its cooldown and cannot be used again until it is over`() {
+        val w = newWorld()
+        w.character = GameCharacter.RUNNER
+        w.update(dt)
+        assertEquals(100, w.hud.value.abilityPercent)
+
+        w.input.requestAbility()
+        w.update(dt)
+        assertTrue(w.player.dashing)
+        assertTrue(w.hud.value.abilityPercent < 100)
+        val cooldown = w.abilityCooldown
+
+        w.input.requestAbility() // too soon: nothing happens, the cooldown just keeps running
+        w.update(dt)
+        assertTrue(w.abilityCooldown < cooldown)
+
+        w.tick(w.player.character.ability.cooldownSeconds + 1f)
+        assertEquals(100, w.hud.value.abilityPercent)
+    }
+
+    @Test fun `the shockwave hurts and stuns zombies in range but not those far away`() {
+        val w = newWorld()
+        w.character = GameCharacter.TANK
+        w.update(dt)
+        val near = w.spawnZombie(ZombieType.TANK, w.player.x + 150f, w.player.y)
+        val far = w.spawnZombie(ZombieType.TANK, w.player.x + 900f, w.player.y)
+
+        w.input.requestAbility()
+        w.update(dt)
+
+        assertTrue(near.health < near.maxHealth)
+        assertTrue(near.stunTimer > 1f)
+        assertEquals(far.maxHealth, far.health, 0.001f)
+        assertEquals(0f, far.stunTimer, 0.001f)
+    }
+
+    @Test fun `the heal pulse restores health over time`() {
+        val w = newWorld()
+        w.character = GameCharacter.MEDIC
+        w.update(dt)
+        w.player.takeDamage(60f)
+        val hurt = w.player.health
+
+        w.input.requestAbility()
+        w.tick(GameConfig.HEAL_PULSE_SECONDS + 0.5f)
+
+        assertTrue(w.player.health >= hurt + GameConfig.HEAL_PULSE_TOTAL - 1f)
+    }
+
+    @Test fun `the engineer's turret shoots zombies but does not count as the player's shots`() {
+        val w = newWorld()
+        w.character = GameCharacter.ENGINEER
+        w.update(dt)
+        w.input.requestAbility()
+        w.update(dt)
+        assertEquals(1, w.turrets.size)
+
+        val t = w.turrets[0]
+        val z = w.spawnZombie(ZombieType.TANK, t.x + 200f, t.y)
+        w.tick(1.5f)
+
+        assertTrue(z.health < z.maxHealth)
+        assertEquals(0, w.runTotals().shotsFired)
+        assertEquals(0, w.runTotals().shotsHit)
+
+        w.tick(GameConfig.TURRET_SECONDS)
+        assertTrue(w.turrets.isEmpty())
+    }
+
+    @Test fun `rage grants rapid fire and double damage`() {
+        val w = newWorld()
+        w.character = GameCharacter.COMMANDO
+        w.update(dt)
+        w.input.requestAbility()
+        w.update(dt)
+        assertTrue(w.player.rapidFire)
+        assertTrue(w.player.damageBoost)
+    }
+
+    @Test fun `a new run resets the ability cooldown and the turret`() {
+        val w = newWorld()
+        w.character = GameCharacter.ENGINEER
+        w.update(dt)
+        w.input.requestAbility()
+        w.update(dt)
+        assertTrue(w.abilityCooldown > 0f)
+
+        w.requestRestart()
+        w.update(dt)
+        assertEquals(0f, w.abilityCooldown, 0.001f)
+        assertTrue(w.turrets.isEmpty())
+    }
+
+    // ---------------------------------------------------------------- player stats and diamonds
+
+    @Test fun `armor reduces damage and a dash dodges it`() {
+        val tank = Player(0f, 0f).apply { applyCharacter(GameCharacter.TANK) }
+        assertTrue(tank.takeDamage(10f))
+        assertEquals(150f - 8f, tank.health, 0.001f)
+
+        val runner = Player(0f, 0f).apply { applyCharacter(GameCharacter.RUNNER) }
+        runner.startDash(1f, 0f, GameConfig.DASH_SECONDS)
+        assertFalse(runner.takeDamage(10f))
+        assertEquals(runner.maxHealth, runner.health, 0.001f)
+    }
+
+    @Test fun `the medic regenerates and the others do not`() {
+        val medic = Player(0f, 0f).apply { applyCharacter(GameCharacter.MEDIC) }
+        medic.takeDamage(30f)
+        val hurt = medic.health
+        repeat(120) { medic.update(dt) }
+        assertTrue(medic.health > hurt)
+
+        val survivor = Player(0f, 0f)
+        survivor.takeDamage(30f)
+        val survivorHurt = survivor.health
+        repeat(120) { survivor.update(dt) }
+        assertEquals(survivorHurt, survivor.health, 0.001f)
+    }
+
+    @Test fun `diamonds drop only from the zombies' own chance and bosses, never from the normal table`() {
+        assertEquals(0, PowerUpType.DIAMOND.weight)
+        assertTrue(ZombieType.entries.filter { !it.isBoss }.all { it.diamondChance > 0f && it.diamondChance < 0.5f })
+        assertTrue(ZombieType.TANK.diamondChance > ZombieType.WALKER.diamondChance)
+        assertTrue(GameConfig.BOSS_DIAMOND_DROPS > 0)
     }
 }

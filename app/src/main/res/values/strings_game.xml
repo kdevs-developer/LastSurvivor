@@ -16,4 +16,5 @@
     <string name="game_over_kills_format">Zombies killed: %1$d</string>
     <string name="game_over_coins_format">Coins earned: %1$d</string>
     <string name="game_retry">Retry</string>
+    <string name="game_over_diamonds_format">Diamonds found: %1$d</string>
 </resources>

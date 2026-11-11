@@ -15,6 +15,9 @@
     <color name="powerup_damage">#FFE53935</color>
     <color name="powerup_shield">#FF1E88E5</color>
     <color name="powerup_grenade">#FF6D4C41</color>
+    <color name="powerup_diamond">#FF26C6DA</color>
+    <color name="turret_body">#FF455A64</color>
+    <color name="turret_barrel">#FFCFD8DC</color>
     <color name="powerup_symbol">#FFFFFFFF</color>
     <color name="powerup_ring">#88FFFFFF</color>
     <color name="shield_bubble">#5542A5F5</color>

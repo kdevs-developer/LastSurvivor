@@ -84,6 +84,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kdevs.lastsurvivor.ui.DiamondIcon
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
@@ -132,6 +133,7 @@ fun MainMenuScreen(
 
     // Numbers count up when the menu opens and whenever they change.
     val coinsShown by animateIntAsState(progress.coins, tween(900, easing = FastOutSlowInEasing), label = "coins")
+    val diamondsShown by animateIntAsState(progress.diamonds, tween(900, easing = FastOutSlowInEasing), label = "diamonds")
     val killsShown by animateIntAsState(stats.kills, tween(900, easing = FastOutSlowInEasing), label = "kills")
 
     // The title flickers now and then, like a failing neon sign.
@@ -255,6 +257,7 @@ fun MainMenuScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             StatPill(Icons.Filled.MonetizationOn, stringResource(R.string.menu_coins_format, coinsShown), coinGold)
+            StatPill(DiamondIcon, stringResource(R.string.menu_diamonds_format, diamondsShown), colorResource(R.color.powerup_diamond))
             if (stats.kills > 0) {
                 StatPill(Icons.Filled.Whatshot, stringResource(R.string.menu_kills_format, killsShown), colorResource(R.color.menu_kills_orange))
             }

@@ -9,5 +9,7 @@ enum class PowerUpType(val weight: Int) {
     RAPID_FIRE(20),
     DOUBLE_DAMAGE(20),
     SHIELD(15),
-    GRENADE(25)
+    GRENADE(25),
+    /** Never rolled by the normal drop table (weight 0): diamonds have their own drop chance. */
+    DIAMOND(0)
 }

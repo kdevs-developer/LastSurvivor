@@ -20,6 +20,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.InputState
+import com.kdevs.lastsurvivor.game.entities.AbilityType
+import com.kdevs.lastsurvivor.ui.character.icon
 
 /**
  * All on-screen controls. Sizes derive from the available height, so the layout adapts to
@@ -32,16 +34,23 @@ import com.kdevs.lastsurvivor.game.engine.InputState
  *  - The right stick aims and fires: the weapon shoots automatically while it is dragged.
  *  - Grenade is a tap: it is thrown automatically at the biggest nearby group of zombies.
  *  - Reload is a tap.
+ *  - The character's ability is a tap; its ring fills while it recharges and the button lights up when ready.
  *
  * Only empty areas pass touches through to the game view underneath.
  */
 @Composable
-fun GameControls(input: InputState, modifier: Modifier = Modifier) {
+fun GameControls(
+    input: InputState,
+    ability: AbilityType,
+    abilityPercent: Int,
+    modifier: Modifier = Modifier
+) {
     val moveColor = colorResource(R.color.control_move)
     val aimColor = colorResource(R.color.control_aim)
     val reloadColor = colorResource(R.color.control_reload)
     val grenadeColor = colorResource(R.color.control_grenade)
     val sprintColor = colorResource(R.color.control_sprint)
+    val abilityColor = colorResource(R.color.control_ability)
 
     // Controls leave the screen on pause and InputState.reset() clears sprint, so a fresh "off" here always matches.
     var sprintOn by remember { mutableStateOf(false) }
@@ -104,6 +113,18 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
                 .align(Alignment.BottomEnd)
                 .padding(end = stick + gap, bottom = stick * 0.2f)
         ) { pressed -> if (pressed) input.requestReload() }
+
+        ActionButton(
+            icon = ability.icon(),
+            description = stringResource(R.string.control_ability),
+            diameter = reload,
+            color = abilityColor,
+            active = abilityPercent >= 100,
+            progress = abilityPercent / 100f,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = stick + gap, bottom = stick * 0.2f + reload + gap)
+        ) { pressed -> if (pressed) input.requestAbility() }
 
         ActionButton(
             icon = Icons.Filled.Whatshot,

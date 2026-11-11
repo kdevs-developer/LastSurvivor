@@ -73,11 +73,11 @@ fun GameScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val sounds = rememberSoundManager()
 
-    // Equip the weapon and outfit chosen on the upgrades and character screens, then start the run:
+    // Equip the weapon and character chosen on the upgrades and character screens, then start the run:
     // either from the saved checkpoint (Continue) or from wave 1.
     LaunchedEffect(Unit) {
         gameView.equipWeapon(viewModel.loadEquippedWeapon())
-        gameView.setSkin(viewModel.loadSkin())
+        gameView.setCharacter(viewModel.loadCharacter())
         val saved = if (continueRun) viewModel.loadCheckpoint() else null
         viewModel.beginRun(continued = saved != null)
         if (saved != null) gameView.continueRun(saved.wave, saved.health, saved.grenades)
@@ -148,7 +148,7 @@ fun GameScreen(
             )
         } else if (!paused) {
             GameHud(hud)
-            GameControls(input = gameView.input)
+            GameControls(input = gameView.input, ability = hud.ability, abilityPercent = hud.abilityPercent)
             IconButton(
                 onClick = {
                     sounds.play(SoundEffect.UI_CLICK)

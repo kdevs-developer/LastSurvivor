@@ -1,5 +1,6 @@
 package com.kdevs.lastsurvivor.game.engine
 
+import com.kdevs.lastsurvivor.game.entities.AbilityType
 import com.kdevs.lastsurvivor.game.entities.ZombieType
 import com.kdevs.lastsurvivor.game.weapons.WeaponType
 
@@ -40,5 +41,12 @@ data class HudState(
     /** The boss currently alive, or null. */
     val boss: ZombieType? = null,
     /** Boss health 0..100. */
-    val bossPercent: Int = 0
+    val bossPercent: Int = 0,
+    // ---- Characters ----
+    /** Diamonds picked up in this stretch of play. */
+    val diamonds: Int = 0,
+    /** The character's active ability. */
+    val ability: AbilityType = AbilityType.ADRENALINE,
+    /** 0..100 in steps of 5: how far the ability's cooldown has recovered. 100 = ready. */
+    val abilityPercent: Int = 100
 )

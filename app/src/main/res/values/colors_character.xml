@@ -1,20 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Module: character (Phase 10). Outfit colours; the default Survivor outfit uses the player_* colours in colors.xml. -->
+<!-- Module: characters. Outfit colours per character (body, sleeves, backpack, hair); Survivor uses the player_* colours in colors.xml. -->
 <resources>
-    <color name="skin_ranger_body">#FF3F6B3A</color>
-    <color name="skin_ranger_arm">#FF55844B</color>
-    <color name="skin_ranger_pack">#FF4A3B22</color>
-    <color name="skin_ranger_hair">#FF2B2B2B</color>
+    <color name="char_runner_body">#FFD84315</color>
+    <color name="char_runner_arm">#FFFF7043</color>
+    <color name="char_runner_pack">#FF4E342E</color>
+    <color name="char_runner_hair">#FF212121</color>
 
-    <color name="skin_scavenger_body">#FFA8672A</color>
-    <color name="skin_scavenger_arm">#FFC27F3C</color>
-    <color name="skin_scavenger_pack">#FF5A3A1B</color>
-    <color name="skin_scavenger_hair">#FF8A6D3B</color>
+    <color name="char_tank_body">#FF455A64</color>
+    <color name="char_tank_arm">#FF607D8B</color>
+    <color name="char_tank_pack">#FF263238</color>
+    <color name="char_tank_hair">#FF3E2723</color>
 
-    <color name="skin_shadow_body">#FF3A3547</color>
-    <color name="skin_shadow_arm">#FF4F4962</color>
-    <color name="skin_shadow_pack">#FF1F1C28</color>
-    <color name="skin_shadow_hair">#FFB8B8C8</color>
+    <color name="char_medic_body">#FFE0E0E0</color>
+    <color name="char_medic_arm">#FFF5F5F5</color>
+    <color name="char_medic_pack">#FFC62828</color>
+    <color name="char_medic_hair">#FF6D4C41</color>
+
+    <color name="char_engineer_body">#FFF9A825</color>
+    <color name="char_engineer_arm">#FFFBC02D</color>
+    <color name="char_engineer_pack">#FF37474F</color>
+    <color name="char_engineer_hair">#FF4E342E</color>
+
+    <color name="char_commando_body">#FF3F6B3A</color>
+    <color name="char_commando_arm">#FF55844B</color>
+    <color name="char_commando_pack">#FF2E3B24</color>
+    <color name="char_commando_hair">#FF1B1B1B</color>
+
+    <!-- Ability button on the game controls, and the diamond pill -->
+    <color name="control_ability">#FF26C6DA</color>
 
     <!-- Character screen -->
     <color name="character_card_selected">#33FF3B30</color>

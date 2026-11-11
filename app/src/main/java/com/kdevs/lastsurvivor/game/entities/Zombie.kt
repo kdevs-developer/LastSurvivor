@@ -50,6 +50,9 @@ class Zombie : Entity(0f, 0f, 26f) {
     var pendingDamage: Float = 0f
     /** While >0 the zombie may not show another damage number, so rapid hits are summed. */
     var numberCooldown: Float = 0f
+
+    /** >0 while stunned (the Tank's shockwave): the zombie neither walks nor attacks. */
+    var stunTimer: Float = 0f
     /** One-shot cues for the sound and shake system; GameWorld reads them and sets them back to false. */
     var windupJustStarted: Boolean = false
     var chargeJustStarted: Boolean = false
@@ -103,6 +106,7 @@ class Zombie : Entity(0f, 0f, 26f) {
         deathTimer = 0f
         age = 0f
         pendingDamage = 0f
+        stunTimer = 0f
         numberCooldown = 0f
         windupJustStarted = false
         chargeJustStarted = false
@@ -134,6 +138,7 @@ class Zombie : Entity(0f, 0f, 26f) {
         }
         age += dt
         if (numberCooldown > 0f) numberCooldown -= dt
+        if (stunTimer > 0f) stunTimer -= dt
         if (attackTimer > 0f) attackTimer -= dt
         if (attackAnim > 0f) attackAnim -= dt
         if (hitFlash > 0f) hitFlash -= dt
@@ -146,6 +151,10 @@ class Zombie : Entity(0f, 0f, 26f) {
      */
     fun chase(dt: Float, player: Player): Boolean {
         if (state == ZombieState.DEAD) return false
+        if (stunTimer > 0f) {
+            state = ZombieState.IDLE
+            return false
+        }
 
         val dx = player.x - x
         val dy = player.y - y

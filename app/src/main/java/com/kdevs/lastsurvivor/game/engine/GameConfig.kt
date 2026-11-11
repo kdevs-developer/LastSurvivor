@@ -100,6 +100,37 @@ object GameConfig {
     const val BOSS_SUMMON_COUNT = 3
     const val BOSS_SUMMON_ALIVE_LIMIT = 45
 
+    // ---- Characters and diamonds ----
+    /** A diamond pickup stays on the ground this long (longer than other pickups: they are precious). */
+    const val DIAMOND_LIFETIME = 20f
+    /** Bosses drop this many diamonds. */
+    const val BOSS_DIAMOND_DROPS = 5
+    /** Extra diamonds for clearing a boss wave are the drops above; normal zombies use ZombieType.diamondChance. */
+
+    // ---- Character abilities (cooldowns are in AbilityType) ----
+    const val ADRENALINE_SECONDS = 4f
+    const val ADRENALINE_SPEED_MULT = 1.5f
+    const val DASH_SECONDS = 0.2f
+    /** Dash speed; the distance covered is DASH_SPEED x DASH_SECONDS (300 units). */
+    const val DASH_SPEED = 1500f
+    const val SHOCKWAVE_RADIUS = 320f
+    const val SHOCKWAVE_DAMAGE = 45f
+    const val SHOCKWAVE_KNOCKBACK = 140f
+    const val SHOCKWAVE_STUN_SECONDS = 1.5f
+    /** Bosses are stunned for this fraction of the time. */
+    const val SHOCKWAVE_BOSS_STUN_FRACTION = 0.4f
+    const val HEAL_PULSE_TOTAL = 45f
+    const val HEAL_PULSE_SECONDS = 3f
+    const val TURRET_RADIUS = 24f
+    const val TURRET_SECONDS = 10f
+    const val TURRET_RANGE = 650f
+    const val TURRET_FIRE_INTERVAL = 0.25f
+    const val TURRET_DAMAGE = 14f
+    const val TURRET_BULLET_SPEED = 1300f
+    /** How far in front of the player the turret is placed. */
+    const val TURRET_PLACE_DISTANCE = 70f
+    const val RAGE_SECONDS = 6f
+
     // ---- Phase 10: saving ----
     /** Continue restores at least this fraction of the maximum health, so a checkpoint is never a death trap. */
     const val CHECKPOINT_MIN_HEALTH_FRACTION = 0.5f

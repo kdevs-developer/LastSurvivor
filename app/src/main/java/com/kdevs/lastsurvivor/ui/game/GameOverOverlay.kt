@@ -68,6 +68,9 @@ fun GameOverOverlay(hud: HudState, onRetry: () -> Unit, onQuit: () -> Unit) {
             Text(stringResource(R.string.game_over_wave_format, hud.wave), style = MaterialTheme.typography.titleLarge, color = textColor)
             Text(stringResource(R.string.game_over_kills_format, hud.kills), style = MaterialTheme.typography.titleMedium, color = textColor)
             Text(stringResource(R.string.game_over_coins_format, hud.coins), style = MaterialTheme.typography.titleMedium, color = colorResource(R.color.coin_gold))
+            if (hud.diamonds > 0) {
+                Text(stringResource(R.string.game_over_diamonds_format, hud.diamonds), style = MaterialTheme.typography.titleMedium, color = colorResource(R.color.powerup_diamond))
+            }
             Column(
                 modifier = Modifier.padding(top = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),

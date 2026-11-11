@@ -5,12 +5,14 @@ import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.game.effects.DecalField
 import com.kdevs.lastsurvivor.game.effects.FloatingTexts
 import com.kdevs.lastsurvivor.game.effects.ParticleSystem
+import com.kdevs.lastsurvivor.game.entities.AbilityType
 import com.kdevs.lastsurvivor.game.entities.Bullet
-import com.kdevs.lastsurvivor.game.entities.CharacterSkin
+import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
 import com.kdevs.lastsurvivor.game.entities.Grenade
 import com.kdevs.lastsurvivor.game.entities.ImpactEffect
 import com.kdevs.lastsurvivor.game.entities.Player
+import com.kdevs.lastsurvivor.game.entities.Turret
 import com.kdevs.lastsurvivor.game.entities.PowerUp
 import com.kdevs.lastsurvivor.game.entities.PowerUpType
 import com.kdevs.lastsurvivor.game.entities.Zombie
@@ -25,6 +27,7 @@ import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 import kotlin.random.Random
@@ -92,8 +95,30 @@ class GameWorld {
     /** Player options. Replaced as a whole (the object is immutable), so the game thread always sees a consistent copy. */
     @Volatile var settings: GameSettings = GameSettings()
 
-    /** The outfit the renderer draws the player in. */
-    @Volatile var skin: CharacterSkin = CharacterSkin.SURVIVOR
+    /**
+     * The character being played: it sets the stats, the ability and the outfit the renderer draws.
+     * Stats are applied at the start of the next tick. Safe to set from any thread.
+     */
+    @Volatile var character: GameCharacter = GameCharacter.SURVIVOR
+        set(value) {
+            field = value
+            pendingCharacter.set(value)
+        }
+    private val pendingCharacter = AtomicReference<GameCharacter?>(null)
+
+    /** The equipped weapon before the character's magazine and reload bonuses. */
+    private var baseWeaponStats: WeaponStats? = null
+
+    /** Turrets standing in the world (the Engineer's ability). At most one at a time. */
+    val turrets = ArrayList<Turret>(2)
+
+    /** Seconds until the character's ability can be used again; 0 = ready. */
+    var abilityCooldown: Float = 0f
+        private set
+
+    /** Diamonds collected in this stretch of play. Saved with the run. */
+    var diamonds: Int = 0
+        private set
 
     /** Bosses killed in this stretch of play. */
     var bossKills: Int = 0
@@ -165,11 +190,23 @@ class GameWorld {
     /** Everything worth saving about this stretch of play. Read from the UI thread; plain ints, so a slightly stale value is harmless. */
     fun runTotals() = RunTotals(
         coins = coins, kills = kills, shotsFired = shotsFired, shotsHit = shotsHit,
-        bossKills = bossKills, seconds = runSeconds.toInt()
+        bossKills = bossKills, seconds = runSeconds.toInt(), diamonds = diamonds
     )
 
     /** Equips a weapon (with a full magazine) on the next tick. Safe to call from any thread. */
     fun requestEquip(stats: WeaponStats) = pendingWeapon.set(stats)
+
+    /** Equips [base] with the character's magazine and reload bonuses applied. */
+    private fun equipFor(base: WeaponStats) {
+        baseWeaponStats = base
+        val c = player.character
+        val adjusted = if (c.magazineMult == 1f && c.reloadTimeMult == 1f) base else base.copy(
+            magazine = (base.magazine * c.magazineMult).roundToInt().coerceAtLeast(1),
+            reloadSeconds = base.reloadSeconds * c.reloadTimeMult
+        )
+        weapon.equip(adjusted)
+        wasReloading = false
+    }
 
     private fun reset() {
         var i = 0
@@ -191,6 +228,8 @@ class GameWorld {
         while (i < explosions.size) { explosionPool.release(explosions[i]); i++ }
         explosions.clear()
         grenadeCount = GameConfig.GRENADE_START_COUNT
+        turrets.clear()
+        abilityCooldown = 0f
         boss = null
         particles.clear()
         decals.clear()
@@ -211,6 +250,7 @@ class GameWorld {
         kills = 0
         coins = 0
         bossKills = 0
+        diamonds = 0
         runSeconds = 0f
         gameOver = false
     }
@@ -224,7 +264,11 @@ class GameWorld {
     }
 
     fun update(dt: Float) {
-        pendingWeapon.getAndSet(null)?.let { weapon.equip(it); wasReloading = false }
+        pendingWeapon.getAndSet(null)?.let { equipFor(it) }
+        pendingCharacter.getAndSet(null)?.let {
+            player.applyCharacter(it)
+            baseWeaponStats?.let { base -> equipFor(base) } // the new character's magazine and reload bonuses
+        }
         if (restartRequested.getAndSet(false)) reset()
         pendingContinue.getAndSet(null)?.let { applyContinue(it) }
         if (gameOver) {
@@ -234,12 +278,14 @@ class GameWorld {
         }
 
         runSeconds += dt
+        if (abilityCooldown > 0f) abilityCooldown = max(0f, abilityCooldown - dt)
         applyInput()
         player.update(dt)
         player.x = player.x.coerceIn(player.radius, WIDTH - player.radius)
         player.y = player.y.coerceIn(player.radius, HEIGHT - player.radius)
 
         updateShooting(dt)
+        updateTurrets(dt)
         syncReloadSounds()
 
         waves.update(dt)
@@ -352,7 +398,7 @@ class GameWorld {
 
         val hitX = b.prevX + (b.x - b.prevX) * bestT
         val hitY = b.prevY + (b.y - b.prevY) * bestT
-        shotsHit++
+        if (!b.fromTurret) shotsHit++ // turret bullets do not count towards accuracy
         val killed = z.takeDamage(b.damage)
         if (killed) registerKill(z, b.dirX, b.dirY)
         z.x += b.dirX * GameConfig.HIT_KNOCKBACK
@@ -397,6 +443,150 @@ class GameWorld {
 
         if (input.consumeReload()) weapon.startReload()
         if (input.consumeGrenade()) throwGrenade()
+        if (input.consumeAbility()) useAbility()
+    }
+
+    // ---------------------------------------------------------------------------------------
+    // Character abilities
+    // ---------------------------------------------------------------------------------------
+
+    /** Fires the character's ability if it is ready, then starts the cooldown. */
+    private fun useAbility() {
+        if (!player.alive) return
+        if (abilityCooldown > 0f) {
+            playSound(SoundEffect.UI_DENIED)
+            return
+        }
+        val ability = player.character.ability
+        when (ability) {
+            AbilityType.ADRENALINE -> {
+                player.startAdrenaline(GameConfig.ADRENALINE_SECONDS)
+                abilityBurst(PowerUpType.RAPID_FIRE)
+            }
+            AbilityType.DASH -> startDash()
+            AbilityType.SHOCKWAVE -> shockwave()
+            AbilityType.HEAL_PULSE -> {
+                player.startHealOverTime(GameConfig.HEAL_PULSE_TOTAL, GameConfig.HEAL_PULSE_SECONDS)
+                abilityBurst(PowerUpType.MEDKIT)
+                playSound(SoundEffect.PICKUP_HEAL)
+            }
+            AbilityType.TURRET -> placeTurret()
+            AbilityType.RAGE -> {
+                player.grantRapidFire(GameConfig.RAGE_SECONDS)
+                player.grantDamageBoost(GameConfig.RAGE_SECONDS)
+                abilityBurst(PowerUpType.DOUBLE_DAMAGE)
+                addShake(0.2f)
+            }
+        }
+        abilityCooldown = ability.cooldownSeconds
+    }
+
+    /** A ring of sparkles around the player in the colour of [type], with the pickup sound. */
+    private fun abilityBurst(type: PowerUpType) {
+        playSound(SoundEffect.PICKUP_POWERUP)
+        radialBurst(ParticleSystem.PICKUP, player.x, player.y, 14, 280f, 0.6f, 4f, tag = type.ordinal)
+    }
+
+    /** Dash along the movement stick, or the way the player faces if the stick is idle. */
+    private fun startDash() {
+        val p = player
+        val len = sqrt(p.moveX * p.moveX + p.moveY * p.moveY)
+        val dx = if (len > 0.1f) p.moveX else cos(p.rotation)
+        val dy = if (len > 0.1f) p.moveY else sin(p.rotation)
+        p.startDash(dx, dy, GameConfig.DASH_SECONDS)
+        playSound(SoundEffect.GRENADE_THROW, pitch = 1.4f)
+        radialBurst(ParticleSystem.DUST, p.x, p.y, 10, 180f, 0.5f, 7f)
+    }
+
+    /** A blast around the player: damages, shoves back and stuns every zombie in range. Never hurts the player. */
+    private fun shockwave() {
+        val p = player
+        val e = explosionPool.obtain()
+        e.start(p.x, p.y, GameConfig.SHOCKWAVE_RADIUS)
+        explosions.add(e)
+        sound(SoundEffect.EXPLOSION, p.x, p.y, 0.8f)
+        addShake(0.35f)
+        radialBurst(ParticleSystem.DUST, p.x, p.y, 16, 320f, 0.6f, 8f)
+
+        var i = 0
+        while (i < zombies.size) {
+            val z = zombies[i]
+            i++
+            if (!z.alive) continue
+            val dx = z.x - p.x
+            val dy = z.y - p.y
+            val reach = GameConfig.SHOCKWAVE_RADIUS + z.radius
+            val d2 = dx * dx + dy * dy
+            if (d2 > reach * reach) continue
+            val d = sqrt(d2)
+            val nx = if (d > 0.001f) dx / d else 1f
+            val ny = if (d > 0.001f) dy / d else 0f
+            if (z.takeDamage(GameConfig.SHOCKWAVE_DAMAGE)) {
+                registerKill(z, nx, ny)
+            } else {
+                z.x += nx * GameConfig.SHOCKWAVE_KNOCKBACK
+                z.y += ny * GameConfig.SHOCKWAVE_KNOCKBACK
+                val stun = GameConfig.SHOCKWAVE_STUN_SECONDS * (if (z.isBoss) GameConfig.SHOCKWAVE_BOSS_STUN_FRACTION else 1f)
+                z.stunTimer = max(z.stunTimer, stun)
+            }
+        }
+    }
+
+    /** Drops a turret in front of the player. Only one stands at a time: a new one replaces the old. */
+    private fun placeTurret() {
+        val p = player
+        turrets.clear()
+        val t = Turret()
+        t.place(
+            (p.x + cos(p.rotation) * GameConfig.TURRET_PLACE_DISTANCE).coerceIn(t.radius, WIDTH - t.radius),
+            (p.y + sin(p.rotation) * GameConfig.TURRET_PLACE_DISTANCE).coerceIn(t.radius, HEIGHT - t.radius)
+        )
+        t.rotation = p.rotation
+        turrets.add(t)
+        playSound(SoundEffect.PICKUP_GRENADE)
+        radialBurst(ParticleSystem.SMOKE, t.x, t.y, 6, 120f, 0.7f, 10f)
+    }
+
+    /** Ages turrets, removes expired ones and lets the rest shoot the nearest zombie in range. */
+    private fun updateTurrets(dt: Float) {
+        var i = 0
+        while (i < turrets.size) {
+            val t = turrets[i]
+            t.update(dt)
+            if (!t.active) {
+                turrets.removeAt(i)
+                continue
+            }
+            aimAndFireTurret(t)
+            i++
+        }
+    }
+
+    private fun aimAndFireTurret(t: Turret) {
+        var target: Zombie? = null
+        var bestD2 = GameConfig.TURRET_RANGE * GameConfig.TURRET_RANGE
+        var i = 0
+        while (i < zombies.size) {
+            val z = zombies[i]
+            i++
+            if (!z.alive) continue
+            val dx = z.x - t.x
+            val dy = z.y - t.y
+            val d2 = dx * dx + dy * dy
+            if (d2 < bestD2) {
+                bestD2 = d2
+                target = z
+            }
+        }
+        val z = target ?: return
+        t.rotation = atan2(z.y - t.y, z.x - t.x)
+        if (t.cooldown > 0f) return
+        t.cooldown = GameConfig.TURRET_FIRE_INTERVAL
+        val b = bulletPool.obtain()
+        b.fire(t.x, t.y, t.rotation, GameConfig.TURRET_BULLET_SPEED, GameConfig.TURRET_DAMAGE, GameConfig.TURRET_RANGE + 80f, 1)
+        b.fromTurret = true
+        bullets.add(b)
+        sound(SoundEffect.SHOT_SMG, t.x, t.y, 1.15f)
     }
 
     /**
@@ -589,6 +779,7 @@ class GameWorld {
             PowerUpType.SHIELD -> player.grantShield(GameConfig.SHIELD_SECONDS)
             PowerUpType.GRENADE ->
                 grenadeCount = (grenadeCount + GameConfig.GRENADE_PICKUP_AMOUNT).coerceAtMost(GameConfig.GRENADE_MAX_COUNT)
+            PowerUpType.DIAMOND -> diamonds++
         }
     }
 
@@ -635,11 +826,15 @@ class GameWorld {
         coins += z.type.coinReward
         if (z.type.isBoss) {
             bossKills++
-            // Bosses always drop a random power-up and a grenade pack.
+            // Bosses always drop a random power-up, a grenade pack and a handful of diamonds.
             dropPowerUp(pickDropType(), z.x - 40f, z.y)
             dropPowerUp(PowerUpType.GRENADE, z.x + 40f, z.y)
-        } else if (Random.nextFloat() < z.type.dropChance) {
-            dropPowerUp(pickDropType(), z.x, z.y)
+            for (n in 0 until GameConfig.BOSS_DIAMOND_DROPS) {
+                dropPowerUp(PowerUpType.DIAMOND, z.x + (n - (GameConfig.BOSS_DIAMOND_DROPS - 1) / 2f) * 36f, z.y + 80f)
+            }
+        } else {
+            if (Random.nextFloat() < z.type.dropChance) dropPowerUp(pickDropType(), z.x, z.y)
+            if (Random.nextFloat() < z.type.diamondChance) dropPowerUp(PowerUpType.DIAMOND, z.x + 18f, z.y + 18f)
         }
         killEffects(z, dirX, dirY)
     }
@@ -1059,6 +1254,9 @@ class GameWorld {
         val shield = buffSeconds(player.shieldTimer)
         val bossZombie = boss
         val bossType = bossZombie?.type
+        val ability = player.character.ability
+        val abilityPercent = if (abilityCooldown <= 0f) 100
+            else ((1f - abilityCooldown / ability.cooldownSeconds) * 20f).toInt().coerceIn(0, 19) * 5
         val bossPercent = if (bossZombie != null) ceil(bossZombie.health / bossZombie.maxHealth * 100f).toInt().coerceIn(0, 100) else 0
         if (cur.health == health && cur.maxHealth == maxHealth && cur.poisoned == player.poisoned &&
             cur.wave == waves.wave && cur.phase == waves.phase && cur.countdownSeconds == countdown &&
@@ -1068,7 +1266,8 @@ class GameWorld {
             cur.reloading == weapon.reloading && cur.reloadPercent == reloadPercent &&
             cur.grenades == grenadeCount && cur.rapidFireSeconds == rapid &&
             cur.damageBoostSeconds == damageBuff && cur.shieldSeconds == shield &&
-            cur.bossWave == waves.isBossWave && cur.boss == bossType && cur.bossPercent == bossPercent
+            cur.bossWave == waves.isBossWave && cur.boss == bossType && cur.bossPercent == bossPercent &&
+            cur.diamonds == diamonds && cur.ability == ability && cur.abilityPercent == abilityPercent
         ) return
         hud.value = HudState(
             health = health, maxHealth = maxHealth, poisoned = player.poisoned,
@@ -1078,7 +1277,8 @@ class GameWorld {
             weapon = weapon.stats.type, ammo = weapon.ammo, magazine = weapon.stats.magazine,
             reloading = weapon.reloading, reloadPercent = reloadPercent,
             grenades = grenadeCount, rapidFireSeconds = rapid, damageBoostSeconds = damageBuff,
-            shieldSeconds = shield, bossWave = waves.isBossWave, boss = bossType, bossPercent = bossPercent
+            shieldSeconds = shield, bossWave = waves.isBossWave, boss = bossType, bossPercent = bossPercent,
+            diamonds = diamonds, ability = ability, abilityPercent = abilityPercent
         )
     }
 

@@ -24,7 +24,7 @@ class PowerUp : Entity(0f, 0f, GameConfig.POWERUP_RADIUS) {
         this.x = x
         this.y = y
         age = 0f
-        life = GameConfig.POWERUP_LIFETIME
+        life = if (type == PowerUpType.DIAMOND) GameConfig.DIAMOND_LIFETIME else GameConfig.POWERUP_LIFETIME
         active = true
     }
 
