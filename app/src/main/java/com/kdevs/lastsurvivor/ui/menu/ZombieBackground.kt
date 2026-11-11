@@ -75,6 +75,7 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
     val bolt = colorResource(R.color.menu_bolt)
     val windowLit = colorResource(R.color.menu_window_lit)
     val batColor = colorResource(R.color.menu_bat)
+    val moonDark = colorResource(R.color.menu_moon_dark)
     val buildings = remember {
         val rnd = Random(7)
         List(16) { i ->
@@ -103,11 +104,13 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
         drawCircle(
             Brush.radialGradient(
                 listOf(moonGlowStart, moonGlowEnd),
-                center = Offset(w * 0.5f, h * 0.2f), radius = h * 0.4f
+                center = Offset(w * 0.5f, h * 0.2f), radius = h * 0.55f
             ),
-            radius = h * 0.4f, center = Offset(w * 0.5f, h * 0.2f)
+            radius = h * 0.55f, center = Offset(w * 0.5f, h * 0.2f)
         )
-        drawCircle(moon, radius = h * 0.09f, center = Offset(w * 0.5f, h * 0.2f))
+        drawCircle(moon, radius = h * 0.1f, center = Offset(w * 0.5f, h * 0.2f))
+        drawCircle(moonDark, radius = h * 0.022f, center = Offset(w * 0.5f - h * 0.03f, h * 0.2f - h * 0.025f))
+        drawCircle(moonDark, radius = h * 0.014f, center = Offset(w * 0.5f + h * 0.04f, h * 0.2f + h * 0.03f))
 
         // bats crossing the sky (laps are whole numbers, so the loop is seamless)
         val flap = sin(t * BAT_FLAP_CYCLES * 2.0 * PI).toFloat()
@@ -182,12 +185,18 @@ fun ZombieBackground(modifier: Modifier = Modifier) {
                         alpha = 0.55f + 0.25f * wave
                     }
                     drawRect(
+                        windowLit.copy(alpha = alpha * 0.25f),
+                        topLeft = Offset(b.xFrac * w + bw * (0.18f + c * 0.45f) - ww * 0.25f, wy - wh * 0.25f),
+                        size = Size(ww * 1.5f, wh * 1.5f)
+                    )
+                    drawRect(
                         windowLit.copy(alpha = alpha),
                         topLeft = Offset(b.xFrac * w + bw * (0.18f + c * 0.45f), wy),
                         size = Size(ww, wh)
                     )
                 }
             }
+
         }
         drawRect(groundColor, topLeft = Offset(0f, groundY), size = Size(w, h - groundY))
 

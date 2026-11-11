@@ -16,17 +16,17 @@
     <color name="bone">#FFE8E2D6</color>
 
     <!-- ===== Menu ===== -->
-    <color name="menu_sky_top">#FF07060C</color>
-    <color name="menu_sky_middle">#FF0F0C1C</color>
-    <color name="menu_sky_bottom">#FF050409</color>
-    <color name="menu_moon">#FF6EE023</color>
-    <color name="menu_moon_glow_start">#446EE023</color>
-    <color name="menu_moon_glow_end">#006EE023</color>
-    <color name="menu_fog_start">#336EE023</color>
-    <color name="menu_fog_end">#006EE023</color>
+    <color name="menu_sky_top">#FF0B0509</color>
+    <color name="menu_sky_middle">#FF2A0A12</color>
+    <color name="menu_sky_bottom">#FF12060B</color>
+    <color name="menu_moon">#FFD42A35</color>
+    <color name="menu_moon_glow_start">#66D42A35</color>
+    <color name="menu_moon_glow_end">#00D42A35</color>
+    <color name="menu_fog_start">#33B01E2A</color>
+    <color name="menu_fog_end">#00B01E2A</color>
     <color name="menu_building">#FF0A0912</color>
     <color name="menu_ground">#FF050409</color>
-    <color name="menu_vignette">#FF1F5A0B</color>
+    <color name="menu_vignette">#FF6B0A12</color>
     <color name="menu_zombie_body">#FF030206</color>
     <color name="menu_zombie_eye">#FF9CFF3A</color>
     <color name="menu_button_container">#FF0B0A14</color>
