@@ -27,8 +27,9 @@ import com.kdevs.lastsurvivor.R
 
 /**
  * Round on-screen button. [onPressChanged] is called with true on touch-down and false on
- * release (or cancellation), which supports both hold buttons (fire, sprint) and tap buttons
- * (reload, grenade: act on `true`). The finger may drift outside the button while held.
+ * release (or cancellation), which supports both hold buttons and tap buttons (reload, grenade
+ * and the sprint toggle act on `true`). The finger may drift outside the button while held.
+ * [active] lights the button up while a toggle it controls is switched on (sprint).
  */
 @Composable
 fun ActionButton(
@@ -37,6 +38,7 @@ fun ActionButton(
     diameter: Dp,
     color: Color,
     modifier: Modifier = Modifier,
+    active: Boolean = false,
     onPressChanged: (pressed: Boolean) -> Unit
 ) {
     val currentCallback by rememberUpdatedState(onPressChanged)
@@ -46,7 +48,7 @@ fun ActionButton(
         modifier = modifier
             .size(diameter)
             .clip(CircleShape)
-            .background(color.copy(alpha = if (pressed) 0.8f else 0.3f))
+            .background(color.copy(alpha = if (pressed || active) 0.8f else 0.3f))
             .border(2.dp, color.copy(alpha = 0.9f), CircleShape)
             .pointerInput(Unit) {
                 awaitEachGesture {

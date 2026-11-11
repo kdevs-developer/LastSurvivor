@@ -393,21 +393,98 @@ class GameWorld {
         p.aiming = input.aimActive
         p.sprinting = input.sprintHeld
         p.firing = input.fireHeld ||
-            (input.aimActive && input.aimStrength >= GameConfig.AIM_AUTOFIRE_THRESHOLD)
+                (input.aimActive && input.aimStrength >= GameConfig.AIM_AUTOFIRE_THRESHOLD)
 
         if (input.consumeReload()) weapon.startReload()
         if (input.consumeGrenade()) throwGrenade()
     }
 
-    /** Throws a grenade in the facing direction if the player has one. */
+    /**
+     * Throws a grenade at the biggest group of zombies near the player (auto-aimed).
+     * Every living zombie within throwing range is a candidate centre; the one with the most zombies
+     * inside the blast radius wins (ties go to the closer one) and the grenade lands on the middle of
+     * that group. If every zombie is out of range it is thrown the full distance towards the nearest
+     * one. With no zombies alive nothing is thrown and no grenade is used. This runs once per tap,
+     * never per frame, so the pairwise scan over at most a few dozen zombies is cheap.
+     */
     private fun throwGrenade() {
         if (grenadeCount <= 0) return
+        val p = player
+        val range2 = GameConfig.GRENADE_MAX_RANGE * GameConfig.GRENADE_MAX_RANGE
+        val blast2 = GameConfig.GRENADE_BLAST_RADIUS * GameConfig.GRENADE_BLAST_RADIUS
+
+        var bestCount = 0
+        var bestDist2 = Float.MAX_VALUE
+        var bestX = 0f
+        var bestY = 0f
+        var nearest: Zombie? = null
+        var nearestDist2 = Float.MAX_VALUE
+
+        for (i in zombies.indices) {
+            val z = zombies[i]
+            if (!z.alive) continue
+            val dx = z.x - p.x
+            val dy = z.y - p.y
+            val d2 = dx * dx + dy * dy
+            if (d2 < nearestDist2) {
+                nearestDist2 = d2
+                nearest = z
+            }
+            if (d2 > range2) continue
+
+            // how many zombies a blast centred on this one would catch, and where their middle is
+            var count = 0
+            var sumX = 0f
+            var sumY = 0f
+            for (j in zombies.indices) {
+                val o = zombies[j]
+                if (!o.alive) continue
+                val ox = o.x - z.x
+                val oy = o.y - z.y
+                if (ox * ox + oy * oy <= blast2) {
+                    count++
+                    sumX += o.x
+                    sumY += o.y
+                }
+            }
+            if (count > bestCount || (count == bestCount && d2 < bestDist2)) {
+                bestCount = count
+                bestDist2 = d2
+                bestX = sumX / count
+                bestY = sumY / count
+            }
+        }
+
+        val targetX: Float
+        val targetY: Float
+        val fallback = nearest
+        if (bestCount > 0) {
+            targetX = bestX
+            targetY = bestY
+        } else if (fallback != null) {
+            targetX = fallback.x
+            targetY = fallback.y
+        } else {
+            playSound(SoundEffect.UI_DENIED) // nothing to throw at, keep the grenade
+            return
+        }
+
+        val dx = targetX - p.x
+        val dy = targetY - p.y
+        val angle = atan2(dy, dx)
+        val distance = sqrt(dx * dx + dy * dy)
+            .coerceIn(GameConfig.GRENADE_MIN_RANGE, GameConfig.GRENADE_MAX_RANGE)
+
         grenadeCount--
-        player.grenadeFlash = FLASH_SECONDS
+        p.grenadeFlash = FLASH_SECONDS
         playSound(SoundEffect.GRENADE_THROW)
         val g = grenadePool.obtain()
-        val a = player.rotation
-        g.launch(player.x + cos(a) * GRENADE_SPAWN_OFFSET, player.y + sin(a) * GRENADE_SPAWN_OFFSET, a)
+        g.launch(
+            p.x + cos(angle) * GRENADE_SPAWN_OFFSET,
+            p.y + sin(angle) * GRENADE_SPAWN_OFFSET,
+            angle,
+            (distance - GRENADE_SPAWN_OFFSET).coerceAtLeast(20f)
+        )
         grenades.add(g)
     }
 
@@ -734,7 +811,7 @@ class GameWorld {
         groanTimer -= dt
         if (groanTimer <= 0f) {
             val base = GameConfig.GROAN_MIN_INTERVAL +
-                Random.nextFloat() * (GameConfig.GROAN_MAX_INTERVAL - GameConfig.GROAN_MIN_INTERVAL)
+                    Random.nextFloat() * (GameConfig.GROAN_MAX_INTERVAL - GameConfig.GROAN_MIN_INTERVAL)
             groanTimer = base / (1f + aliveZombies * 0.04f)
             playGroan()
         }

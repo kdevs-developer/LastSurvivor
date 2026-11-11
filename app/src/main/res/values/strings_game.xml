@@ -5,6 +5,11 @@
     <string name="game_paused_title">PAUSED</string>
     <string name="game_resume">Resume</string>
     <string name="game_quit_to_menu">Quit to Menu</string>
+    <string name="game_pause_wave_active_format">Wave %1$d · %2$d zombies left</string>
+    <string name="game_pause_wave_countdown_format">Next up: wave %1$d</string>
+    <string name="game_pause_kills">Kills</string>
+    <string name="game_pause_coins">Coins</string>
+    <string name="game_pause_grenades">Grenades</string>
 
     <string name="game_over_title">YOU DIED</string>
     <string name="game_over_wave_format">Reached wave %1$d</string>

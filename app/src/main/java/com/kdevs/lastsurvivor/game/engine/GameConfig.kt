@@ -2,14 +2,15 @@ package com.kdevs.lastsurvivor.game.engine
 
 /** Central tuning values for the engine. Weapon balance is in WeaponType / UpgradeConfig. */
 object GameConfig {
-    /** Speed multiplier while the sprint button is held and the player is moving. */
+    /** Speed multiplier while sprint is switched on (tap the sprint button) and the player is moving. */
     const val SPRINT_MULTIPLIER = 1.6f
 
     /**
-     * Twin-stick convenience: pushing the aim stick to its edge also fires.
-     * Set to 2f to disable and fire only with the Fire button.
+     * The aim stick is also the fire control: the weapon fires automatically while the stick is dragged
+     * further than this (0..1 of its radius). The small dead zone stops a touch on the centre from
+     * firing in an undefined direction.
      */
-    const val AIM_AUTOFIRE_THRESHOLD = 0.9f
+    const val AIM_AUTOFIRE_THRESHOLD = 0.15f
 
     // ---- Shooting. Per-weapon stats (damage, fire rate, range...) live in game/weapons/WeaponType. ----
     const val BULLET_RADIUS = 5f
@@ -74,6 +75,10 @@ object GameConfig {
     const val GRENADE_DAMAGE = 140f
     const val GRENADE_EDGE_DAMAGE_FRACTION = 0.4f
     const val GRENADE_KNOCKBACK = 70f
+    /** Farthest a grenade can land: it travels speed x fuse / 2. */
+    const val GRENADE_MAX_RANGE = GRENADE_THROW_SPEED * GRENADE_FUSE_SECONDS / 2f
+    /** Closest an auto-aimed grenade lands, so it is never dropped at the player's feet. */
+    const val GRENADE_MIN_RANGE = 90f
 
     // ---- Phase 8: boss waves ----
     /** Every Nth wave is a boss wave (5, 10, 15...). Bosses alternate Brute, Brood Mother. */

@@ -13,7 +13,22 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.WindowInsetsSides
+import androidx.compose.foundation.layout.only
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.BiasAlignment
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,79 +84,83 @@ import com.kdevs.lastsurvivor.ui.weapons.nameRes
  */
 @Composable
 fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .padding(12.dp)
-    ) {
-        // Top-left: health, poison, kills and coins
-        Column(
-            modifier = Modifier.align(Alignment.TopStart),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+    Box(modifier = modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .padding(12.dp)
         ) {
-            HealthBar(hud.health, hud.maxHealth)
-            if (hud.poisoned) {
-                Text(
-                    text = stringResource(R.string.hud_poisoned),
-                    color = colorResource(R.color.hud_poison_text),
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Chip(Icons.Filled.GpsFixed, stringResource(R.string.hud_kills_format, hud.kills), colorResource(R.color.hud_banner_accent), popOnChange(hud.kills))
-                Chip(Icons.Filled.MonetizationOn, stringResource(R.string.hud_coins_format, hud.coins), colorResource(R.color.coin_gold), popOnChange(hud.coins))
-                Chip(Icons.Filled.Whatshot, stringResource(R.string.hud_grenades_format, hud.grenades), colorResource(R.color.grenade_flash), popOnChange(hud.grenades))
-            }
-            // Active power-up buffs with seconds left
-            if (hud.rapidFireSeconds > 0 || hud.damageBoostSeconds > 0 || hud.shieldSeconds > 0) {
+            // Top-left: health, poison, kills and coins
+            Column(
+                modifier = Modifier.align(Alignment.TopStart),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                HealthBar(hud.health, hud.maxHealth)
+                if (hud.poisoned) {
+                    Text(
+                        text = stringResource(R.string.hud_poisoned),
+                        color = colorResource(R.color.hud_poison_text),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    if (hud.rapidFireSeconds > 0) {
-                        Chip(Icons.Filled.FastForward, stringResource(R.string.hud_buff_seconds_format, hud.rapidFireSeconds), colorResource(R.color.powerup_rapid))
-                    }
-                    if (hud.damageBoostSeconds > 0) {
-                        Chip(Icons.Filled.LocalFireDepartment, stringResource(R.string.hud_buff_seconds_format, hud.damageBoostSeconds), colorResource(R.color.powerup_damage))
-                    }
-                    if (hud.shieldSeconds > 0) {
-                        Chip(Icons.Filled.Shield, stringResource(R.string.hud_buff_seconds_format, hud.shieldSeconds), colorResource(R.color.powerup_shield))
+                    Chip(Icons.Filled.GpsFixed, stringResource(R.string.hud_kills_format, hud.kills), colorResource(R.color.hud_banner_accent), popOnChange(hud.kills))
+                    Chip(Icons.Filled.MonetizationOn, stringResource(R.string.hud_coins_format, hud.coins), colorResource(R.color.coin_gold), popOnChange(hud.coins))
+                    Chip(Icons.Filled.Whatshot, stringResource(R.string.hud_grenades_format, hud.grenades), colorResource(R.color.grenade_flash), popOnChange(hud.grenades))
+                }
+                // Active power-up buffs with seconds left
+                if (hud.rapidFireSeconds > 0 || hud.damageBoostSeconds > 0 || hud.shieldSeconds > 0) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (hud.rapidFireSeconds > 0) {
+                            Chip(Icons.Filled.FastForward, stringResource(R.string.hud_buff_seconds_format, hud.rapidFireSeconds), colorResource(R.color.powerup_rapid))
+                        }
+                        if (hud.damageBoostSeconds > 0) {
+                            Chip(Icons.Filled.LocalFireDepartment, stringResource(R.string.hud_buff_seconds_format, hud.damageBoostSeconds), colorResource(R.color.powerup_damage))
+                        }
+                        if (hud.shieldSeconds > 0) {
+                            Chip(Icons.Filled.Shield, stringResource(R.string.hud_buff_seconds_format, hud.shieldSeconds), colorResource(R.color.powerup_shield))
+                        }
                     }
                 }
             }
-        }
 
-        // Top-centre: current wave and zombies still to kill
-        Column(
-            modifier = Modifier.align(Alignment.TopCenter),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = stringResource(R.string.hud_wave_format, hud.wave),
-                color = colorResource(R.color.hud_banner_text),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black
-            )
-            if (hud.phase == WavePhase.ACTIVE) {
+            // Top-centre: current wave and zombies still to kill
+            Column(
+                modifier = Modifier.align(Alignment.TopCenter),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text(
-                    text = stringResource(R.string.hud_zombies_left_format, hud.zombiesLeft),
-                    color = colorResource(R.color.hud_banner_text).copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.labelLarge
+                    text = stringResource(R.string.hud_wave_format, hud.wave),
+                    color = colorResource(R.color.hud_banner_text),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Black
                 )
+                if (hud.phase == WavePhase.ACTIVE) {
+                    Text(
+                        text = stringResource(R.string.hud_zombies_left_format, hud.zombiesLeft),
+                        color = colorResource(R.color.hud_banner_text).copy(alpha = 0.8f),
+                        style = MaterialTheme.typography.labelLarge
+                    )
+                }
+                if (hud.boss != null) {
+                    BossBar(hud.boss, hud.bossPercent)
+                }
             }
-            if (hud.boss != null) {
-                BossBar(hud.boss, hud.bossPercent)
-            }
+
+            // Bottom-centre: equipped weapon, ammo and reload state
+            AmmoDisplay(hud, Modifier.align(Alignment.BottomCenter))
+
         }
 
-        // Bottom-centre: equipped weapon, ammo and reload state
-        AmmoDisplay(hud, Modifier.align(Alignment.BottomCenter))
-
-        // Centre: banner while waiting for the next wave
+        // Upper-centre: edge-to-edge band while waiting for the next wave. It sits above the middle of the
+        // screen so it does not cover the player, and it is not clickable.
         AnimatedVisibility(
             visible = hud.phase == WavePhase.COUNTDOWN,
-            modifier = Modifier.align(Alignment.Center),
-            enter = fadeIn(tween(250)) + scaleIn(tween(350), initialScale = 1.4f),
-            exit = fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.9f)
+            modifier = Modifier.align(BiasAlignment(0f, -0.4f)),
+            enter = fadeIn(tween(250)) + scaleIn(tween(350), initialScale = 1.15f),
+            exit = fadeOut(tween(250)) + scaleOut(tween(250), targetScale = 0.95f)
         ) {
             WaveBanner(hud)
         }
@@ -211,50 +230,116 @@ private fun AmmoDisplay(hud: HudState, modifier: Modifier = Modifier) {
     }
 }
 
+/** Boss that spawns on [wave]; the same rotation as the wave spawner (the first boss is wave 5, then 10...). */
+private fun bossForWave(wave: Int): ZombieType? {
+    val bosses = ZombieType.entries.filter { it.isBoss }
+    if (bosses.isEmpty()) return null
+    val bossNumber = (wave / GameConfig.BOSS_WAVE_INTERVAL).coerceAtLeast(1)
+    return bosses[(bossNumber - 1) % bosses.size]
+}
+
+/**
+ * Full-width band shown during the countdown: the clear bonus, the wave number and a ring that empties
+ * as the countdown runs. Boss waves turn red and name the boss.
+ */
 @Composable
 private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
-    // the countdown number pops larger each second, then settles
-    val pop = remember { Animatable(1f) }
-    LaunchedEffect(hud.countdownSeconds) {
-        pop.snapTo(1.35f)
-        pop.animateTo(1f, tween(300))
+    val boss = hud.bossWave
+    val accent = colorResource(if (boss) R.color.wave_boss_accent else R.color.neon_green)
+    val label = colorResource(if (boss) R.color.wave_boss_label else R.color.neon_label)
+    val line = colorResource(if (boss) R.color.wave_band_boss_line else R.color.wave_band_line)
+    val background = colorResource(if (boss) R.color.wave_band_boss_bg else R.color.wave_band_bg)
+    val track = colorResource(if (boss) R.color.wave_ring_track_boss else R.color.wave_ring_track)
+    val bossType = remember(hud.wave, boss) { if (boss) bossForWave(hud.wave) else null }
+    val totalSeconds = if (hud.wave <= 1) GameConfig.FIRST_WAVE_COUNTDOWN else GameConfig.WAVE_COUNTDOWN
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(background)
+            .drawBehind {
+                val stroke = 2.dp.toPx()
+                drawLine(line, Offset(0f, 0f), Offset(size.width, 0f), strokeWidth = stroke)
+                drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = stroke)
+            }
+            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal))
+            .padding(horizontal = 24.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            if (hud.clearedBonus > 0) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = stringResource(R.string.hud_banner_cleared),
+                        color = colorResource(R.color.hud_health_good),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp
+                    )
+                    Text(
+                        text = stringResource(R.string.hud_banner_bonus_format, hud.clearedBonus),
+                        color = colorResource(R.color.coin_gold),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            if (boss) {
+                Text(
+                    text = stringResource(R.string.hud_banner_boss),
+                    color = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.sp
+                )
+            }
+            Text(
+                text = stringResource(R.string.hud_banner_wave_format, hud.wave),
+                color = accent,
+                style = MaterialTheme.typography.displaySmall,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 3.sp,
+                maxLines = 1
+            )
+            Text(
+                text = if (bossType != null) stringResource(bossType.bossNameRes()) else stringResource(R.string.hud_banner_get_ready),
+                color = label,
+                style = MaterialTheme.typography.labelLarge,
+                letterSpacing = 2.sp
+            )
+        }
+        CountdownRing(hud.countdownSeconds, totalSeconds, accent, track)
     }
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        if (hud.clearedBonus > 0) {
-            Text(
-                text = stringResource(R.string.hud_banner_cleared),
-                color = colorResource(R.color.hud_health_good),
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = stringResource(R.string.hud_banner_bonus_format, hud.clearedBonus),
-                color = colorResource(R.color.coin_gold),
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
+}
+
+/**
+ * A ring that drains smoothly over each second while the number pops once a second.
+ * Both animated values are read only when drawing, so nothing recomposes per frame.
+ */
+@Composable
+private fun CountdownRing(seconds: Int, totalSeconds: Float, color: Color, track: Color, modifier: Modifier = Modifier) {
+    val pop = remember { Animatable(1f) }
+    val progress = remember { Animatable(1f) }
+    LaunchedEffect(seconds) {
+        pop.snapTo(1.3f)
+        progress.snapTo((seconds / totalSeconds).coerceIn(0f, 1f))
+        launch { pop.animateTo(1f, tween(300)) }
+        progress.animateTo(((seconds - 1) / totalSeconds).coerceIn(0f, 1f), tween(1000, easing = LinearEasing))
+    }
+    Box(modifier = modifier.size(64.dp), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val stroke = 6.dp.toPx()
+            val inset = stroke / 2f
+            val arcSize = Size(size.width - stroke, size.height - stroke)
+            drawArc(track, 0f, 360f, false, Offset(inset, inset), arcSize, style = Stroke(stroke))
+            drawArc(color, -90f, 360f * progress.value, false, Offset(inset, inset), arcSize, style = Stroke(stroke, cap = StrokeCap.Round))
         }
         Text(
-            text = stringResource(R.string.hud_banner_wave_format, hud.wave),
-            color = colorResource(R.color.hud_banner_accent),
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Black,
-            textAlign = TextAlign.Center
-        )
-        if (hud.bossWave) {
-            Text(
-                text = stringResource(R.string.hud_banner_boss),
-                color = colorResource(R.color.boss_warning),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                textAlign = TextAlign.Center
-            )
-        }
-        Text(
-            text = stringResource(R.string.hud_banner_starts_in_format, hud.countdownSeconds),
+            text = seconds.toString(),
             color = colorResource(R.color.hud_banner_text),
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
             modifier = Modifier.graphicsLayer {
                 scaleX = pop.value
                 scaleY = pop.value

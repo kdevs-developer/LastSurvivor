@@ -6,10 +6,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Autorenew
-import androidx.compose.material.icons.filled.GpsFixed
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.colorResource
@@ -22,8 +25,13 @@ import com.kdevs.lastsurvivor.game.engine.InputState
  * All on-screen controls. Sizes derive from the available height, so the layout adapts to
  * phones and tablets. Layout (landscape):
  *
- *  Sprint                                         Reload              Grenade
- *  Move stick                                     Fire     Aim stick
+ *  Sprint                                                    Grenade
+ *  Move stick                                       Reload   Aim + fire stick
+ *
+ *  - Sprint is a toggle: tap to switch it on, tap again to switch it off.
+ *  - The right stick aims and fires: the weapon shoots automatically while it is dragged.
+ *  - Grenade is a tap: it is thrown automatically at the biggest nearby group of zombies.
+ *  - Reload is a tap.
  *
  * Only empty areas pass touches through to the game view underneath.
  */
@@ -31,10 +39,12 @@ import com.kdevs.lastsurvivor.game.engine.InputState
 fun GameControls(input: InputState, modifier: Modifier = Modifier) {
     val moveColor = colorResource(R.color.control_move)
     val aimColor = colorResource(R.color.control_aim)
-    val fireColor = colorResource(R.color.control_fire)
     val reloadColor = colorResource(R.color.control_reload)
     val grenadeColor = colorResource(R.color.control_grenade)
     val sprintColor = colorResource(R.color.control_sprint)
+
+    // Controls leave the screen on pause and InputState.reset() clears sprint, so a fresh "off" here always matches.
+    var sprintOn by remember { mutableStateOf(false) }
 
     BoxWithConstraints(
         modifier = modifier
@@ -43,11 +53,11 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
             .padding(16.dp)
     ) {
         val stick = (maxHeight * 0.42f).coerceIn(110.dp, 170.dp)
-        val big = stick * 0.6f
+        val reload = stick * 0.5f
         val small = stick * 0.4f
         val gap = 14.dp
 
-        // ---- Left: movement + sprint ----
+        // ---- Left: movement + sprint toggle ----
         VirtualJoystick(
             diameter = stick,
             accent = moveColor,
@@ -62,12 +72,18 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
             description = stringResource(R.string.control_sprint),
             diameter = small,
             color = sprintColor,
+            active = sprintOn,
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = stick * 0.1f, bottom = stick + gap)
-        ) { pressed -> input.sprintHeld = pressed }
+        ) { pressed ->
+            if (pressed) {
+                sprintOn = !sprintOn
+                input.sprintHeld = sprintOn
+            }
+        }
 
-        // ---- Right: aim stick, fire, reload, grenade ----
+        // ---- Right: aim and fire stick, reload, grenade ----
         VirtualJoystick(
             diameter = stick,
             accent = aimColor,
@@ -80,23 +96,13 @@ fun GameControls(input: InputState, modifier: Modifier = Modifier) {
         }
 
         ActionButton(
-            icon = Icons.Filled.GpsFixed,
-            description = stringResource(R.string.control_fire),
-            diameter = big,
-            color = fireColor,
-            modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = stick + gap, bottom = 4.dp)
-        ) { pressed -> input.fireHeld = pressed }
-
-        ActionButton(
             icon = Icons.Filled.Autorenew,
             description = stringResource(R.string.control_reload),
-            diameter = small,
+            diameter = reload,
             color = reloadColor,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(end = stick + gap + (big - small) / 2, bottom = big + gap + 4.dp)
+                .padding(end = stick + gap, bottom = stick * 0.2f)
         ) { pressed -> if (pressed) input.requestReload() }
 
         ActionButton(
