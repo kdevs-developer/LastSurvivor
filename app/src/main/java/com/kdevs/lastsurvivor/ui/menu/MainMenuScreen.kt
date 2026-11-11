@@ -248,7 +248,7 @@ fun MainMenuScreen(
             }
         }
 
-        // Top left: coins and kills. Top right: best wave and the sound switch.
+        // Top left: coins and diamonds. Top right: best wave and the sound switch, with total kills below the wave.
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -258,32 +258,39 @@ fun MainMenuScreen(
         ) {
             StatPill(Icons.Filled.MonetizationOn, stringResource(R.string.menu_coins_format, coinsShown), coinGold)
             StatPill(DiamondIcon, stringResource(R.string.menu_diamonds_format, diamondsShown), colorResource(R.color.powerup_diamond))
-            if (stats.kills > 0) {
-                StatPill(Icons.Filled.Whatshot, stringResource(R.string.menu_kills_format, killsShown), colorResource(R.color.menu_kills_orange))
-            }
         }
-        Row(
+        Column(
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .safeDrawingPadding()
                 .padding(end = 8.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalAlignment = Alignment.End
         ) {
-            StatPill(Icons.Filled.EmojiEvents, stringResource(R.string.menu_wave_format, progress.highestWave), toxicGreen)
-            IconButton(
-                onClick = {
-                    // play the click first when turning sound on, so it is heard; turning off is silent
-                    if (!soundEnabled) sounds.enabled = true
-                    sounds.play(SoundEffect.UI_CLICK)
-                    viewModel.toggleSound()
-                }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    if (soundEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
-                    contentDescription = stringResource(R.string.sound_toggle_description),
-                    tint = toxicTitle
-                )
+                StatPill(Icons.Filled.EmojiEvents, stringResource(R.string.menu_wave_format, progress.highestWave), toxicGreen)
+                IconButton(
+                    onClick = {
+                        // play the click first when turning sound on, so it is heard; turning off is silent
+                        if (!soundEnabled) sounds.enabled = true
+                        sounds.play(SoundEffect.UI_CLICK)
+                        viewModel.toggleSound()
+                    }
+                ) {
+                    Icon(
+                        if (soundEnabled) Icons.Filled.VolumeUp else Icons.Filled.VolumeOff,
+                        contentDescription = stringResource(R.string.sound_toggle_description),
+                        tint = toxicTitle
+                    )
+                }
+            }
+            if (stats.kills > 0) {
+                // end padding = sound button (48 dp) + gap (4 dp), so the kills pill sits right under the wave pill
+                Box(modifier = Modifier.padding(end = 52.dp)) {
+                    StatPill(Icons.Filled.Whatshot, stringResource(R.string.menu_kills_format, killsShown), colorResource(R.color.menu_kills_orange))
+                }
             }
         }
     }

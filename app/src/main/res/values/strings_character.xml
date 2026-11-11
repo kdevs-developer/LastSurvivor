@@ -36,6 +36,17 @@
     <string name="char_trait_reload">Reload time %1$+d%%</string>
     <string name="char_trait_magazine">Magazine %1$+d%%</string>
 
+    <!-- Spec tiles on the Characters screen: the same six tiles for every character; only the values change -->
+    <string name="char_spec_health">Health</string>
+    <string name="char_spec_speed">Speed</string>
+    <string name="char_spec_damage_taken">Damage taken</string>
+    <string name="char_spec_regen">Regen</string>
+    <string name="char_spec_reload">Reload time</string>
+    <string name="char_spec_magazine">Magazine</string>
+    <string name="char_spec_percent_format">%1$+d%%</string>
+    <string name="char_spec_regen_format">%1$s HP/s</string>
+    <string name="char_spec_none">—</string>
+
     <!-- Abilities. The numbers match GameConfig (ABILITY values) and AbilityType; keep them in step. -->
     <string name="ability_adrenaline">Adrenaline</string>
     <string name="ability_adrenaline_desc">Run 50% faster for 4 seconds.</string>

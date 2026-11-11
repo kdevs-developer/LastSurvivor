@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -21,10 +22,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
@@ -50,7 +49,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -70,11 +68,8 @@ import kotlin.math.roundToInt
 /** Content never stretches wider than this, so tablets and TVs get a centred, readable layout. */
 private val MaxContentWidth: Dp = 1000.dp
 
-/** Landscape screens shorter than this (after system bars) scroll instead of squeezing the panel. */
-private val ShortHeight: Dp = 330.dp
-
-/** Landscape screens shorter than this use tighter paddings and smaller stat numbers. */
-private val CompactHeight: Dp = 400.dp
+/** Screens shorter than this (after system bars) use tighter paddings and smaller text. */
+private val CompactHeight: Dp = 360.dp
 
 private class CharacterActions(
     val onBack: () -> Unit,
@@ -83,22 +78,17 @@ private class CharacterActions(
     val onUnlock: () -> Unit
 )
 
-/** One tile of the statistics grid; [span] is how many grid columns it takes. */
-private class StatTile(
-    val labelRes: Int,
-    val value: String,
-    val highlight: Boolean = false,
-    val gold: Boolean = false,
-    val span: Int = 1
-)
+/** One line of the lifetime statistics list. */
+private class StatLine(val labelRes: Int, val value: String, val colorRes: Int)
 
 /**
- * Characters screen: a showcase of one character at a time (arrows flip through the six), with its stats,
- * its ability and a Select / Unlock button, and the lifetime statistics as tiles. Locked characters are
- * bought with diamonds. Adapts to the space it gets:
- *  - landscape: header, showcase panel (fills the height), stats in two rows of four columns;
- *  - short landscape: the page scrolls and the panel keeps a fixed height;
- *  - portrait: the character sits above its details and the stats form a two-column grid (scrolls).
+ * Characters screen, compact and fixed (no scrolling). The game is landscape-only, so everything lives in
+ * ONE panel that fills the space under the header:
+ *
+ *   [<] preview [>]  |  name, role, six spec tiles, ability, Select / Unlock  |  lifetime statistics
+ *
+ * Arrows flip through the six characters one at a time. Every section uses weights, so the panel
+ * shrinks or grows with the screen instead of scrolling.
  */
 @Composable
 fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewModel()) {
@@ -121,44 +111,19 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
             .background(colorResource(R.color.survivor_background))
             .safeDrawingPadding()
     ) {
-        val portrait = maxHeight > maxWidth
-        val short = !portrait && maxHeight < ShortHeight
-        val compact = !portrait && maxHeight < CompactHeight
-        val scrolling = portrait || short
-        val pad = if (compact || maxWidth < 400.dp) 10.dp else 16.dp
-        val columns = if (portrait) 2 else 4
+        val compact = maxHeight < CompactHeight
+        val pad = if (compact || maxWidth < 400.dp) 8.dp else 14.dp
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
-            if (scrolling) {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = MaxContentWidth)
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .padding(pad),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Header(actions, state.progress.diamonds)
-                    ShowcasePanel(
-                        state = state,
-                        actions = actions,
-                        stacked = portrait,
-                        modifier = if (portrait) Modifier else Modifier.height(170.dp)
-                    )
-                    StatsGrid(state, columns = columns, compact = compact)
-                }
-            } else {
-                Column(
-                    modifier = Modifier
-                        .widthIn(max = MaxContentWidth)
-                        .fillMaxSize()
-                        .padding(pad),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Header(actions, state.progress.diamonds)
-                    ShowcasePanel(state, actions, stacked = false, modifier = Modifier.weight(1f))
-                    StatsGrid(state, columns = columns, compact = compact)
-                }
+            Column(
+                modifier = Modifier
+                    .widthIn(max = MaxContentWidth)
+                    .fillMaxSize()
+                    .padding(pad),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Header(actions, state.progress.diamonds)
+                CharacterPanel(state, actions, compact, Modifier.weight(1f))
             }
         }
     }
@@ -178,7 +143,7 @@ private fun Header(actions: CharacterActions, diamonds: Int) {
         val shape = RoundedCornerShape(10.dp)
         Box(
             modifier = Modifier
-                .size(40.dp)
+                .size(36.dp)
                 .clip(shape)
                 .border(1.dp, colorResource(R.color.neon_border), shape)
                 .clickable(onClick = actions.onBack),
@@ -207,7 +172,7 @@ private fun Header(actions: CharacterActions, diamonds: Int) {
                 .clip(pill)
                 .background(colorResource(R.color.neon_panel))
                 .border(1.dp, colorResource(R.color.neon_border), pill)
-                .padding(horizontal = 12.dp, vertical = 6.dp),
+                .padding(horizontal = 12.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -223,174 +188,247 @@ private fun Header(actions: CharacterActions, diamonds: Int) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Showcase panel
+// The single panel. Every character uses exactly the same slots; only the values differ:
+//   preview + dots | name, role, six spec tiles, ability box, one button | lifetime statistics
 // ---------------------------------------------------------------------------------------------
 
-/**
- * [stacked] = the character on top with the arrows beside it, details underneath (portrait).
- * Otherwise the character and details sit side by side between the arrows.
- */
 @Composable
-private fun ShowcasePanel(
+private fun CharacterPanel(
     state: CharacterUiState,
     actions: CharacterActions,
-    stacked: Boolean,
+    compact: Boolean,
     modifier: Modifier = Modifier
 ) {
     val shape = RoundedCornerShape(16.dp)
-    val panel = modifier
-        .fillMaxWidth()
-        .clip(shape)
-        .background(colorResource(R.color.neon_panel))
-        .border(1.dp, colorResource(R.color.neon_border), shape)
-
-    if (stacked) {
-        Column(modifier = panel.padding(horizontal = 6.dp, vertical = 8.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colorResource(R.color.neon_panel))
+            .border(1.dp, colorResource(R.color.neon_border), shape)
+            .padding(horizontal = 4.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 1. preview between the arrows, page dots underneath
+        Column(
+            modifier = Modifier.weight(0.8f).fillMaxHeight(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 ArrowButton(Icons.Filled.ChevronLeft, R.string.character_previous) { actions.onStep(-1) }
-                SurvivorArt(state.viewing, Modifier.weight(1f).height(150.dp).padding(8.dp).alpha(if (state.owned) 1f else 0.5f))
+                SurvivorArt(
+                    state.viewing,
+                    Modifier.weight(1f).fillMaxHeight().padding(4.dp).alpha(if (state.owned) 1f else 0.5f)
+                )
                 ArrowButton(Icons.Filled.ChevronRight, R.string.character_next) { actions.onStep(1) }
             }
-            CharacterInfo(state, actions, Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 4.dp), centered = true)
-        }
-    } else {
-        Row(modifier = panel.padding(horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            ArrowButton(Icons.Filled.ChevronLeft, R.string.character_previous) { actions.onStep(-1) }
-            SurvivorArt(state.viewing, Modifier.weight(1f).fillMaxHeight().padding(10.dp).alpha(if (state.owned) 1f else 0.5f))
-            Box(modifier = Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.CenterStart) {
-                CharacterInfo(state, actions, Modifier.verticalScroll(rememberScrollState()).padding(vertical = 8.dp), centered = false)
+            Row(
+                modifier = Modifier.padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                for (entry in GameCharacter.entries) PageDot(selected = entry == state.viewing)
             }
-            ArrowButton(Icons.Filled.ChevronRight, R.string.character_next) { actions.onStep(1) }
         }
+
+        // 2. the character: name, role, specs, ability, action
+        CharacterInfo(state, actions, compact, Modifier.weight(1.45f).fillMaxHeight().padding(horizontal = 6.dp))
+
+        // 3. lifetime statistics as a compact list
+        LifetimeStats(state, compact, Modifier.weight(0.95f).fillMaxHeight().padding(start = 2.dp, end = 6.dp))
     }
 }
 
 @Composable
 private fun ArrowButton(icon: ImageVector, descriptionRes: Int, onClick: () -> Unit) {
-    IconButton(onClick = onClick, modifier = Modifier.size(44.dp)) {
+    IconButton(onClick = onClick, modifier = Modifier.size(36.dp)) {
         Icon(
             icon,
             contentDescription = stringResource(descriptionRes),
             tint = colorResource(R.color.neon_green_dim),
-            modifier = Modifier.size(32.dp)
+            modifier = Modifier.size(30.dp)
         )
     }
 }
 
-/** Name, role, stat changes, the ability, page dots and the Select / Unlock button. */
+/** Fixed order of slots, the same for all six characters. The ability box absorbs any spare height. */
 @Composable
-private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, modifier: Modifier = Modifier, centered: Boolean) {
+private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, compact: Boolean, modifier: Modifier = Modifier) {
     val character = state.viewing
-    val all = GameCharacter.entries
-    val horizontal = if (centered) Alignment.CenterHorizontally else Alignment.Start
-    val textAlign = if (centered) TextAlign.Center else TextAlign.Start
-
-    Column(
-        modifier = modifier,
-        horizontalAlignment = horizontal,
-        verticalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        Text(
-            stringResource(character.nameRes()),
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = colorResource(R.color.neon_title),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            stringResource(character.roleRes()),
-            style = MaterialTheme.typography.bodySmall,
-            color = colorResource(R.color.neon_label),
-            textAlign = textAlign
-        )
-        Text(
-            traitsText(character),
-            style = MaterialTheme.typography.labelMedium,
-            fontWeight = FontWeight.Bold,
-            color = colorResource(R.color.neon_green_dim),
-            textAlign = textAlign
-        )
-        AbilityRow(character.ability)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            for (entry in all) {
-                PageDot(selected = entry == character)
-            }
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
+        Column {
+            Text(
+                stringResource(character.nameRes()),
+                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(R.color.neon_title),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                stringResource(character.roleRes()),
+                style = MaterialTheme.typography.bodySmall,
+                color = colorResource(R.color.neon_label),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
-        Text(
-            stringResource(R.string.character_index_format, all.indexOf(character) + 1, all.size),
-            style = MaterialTheme.typography.labelSmall,
-            color = colorResource(R.color.neon_label)
-        )
+        SpecGrid(character)
+        AbilityBox(character.ability, Modifier.weight(1f))
         CharacterActionButton(state, actions)
     }
 }
 
-/** What the character does better or worse than Survivor, as one line such as "Health -25% - Speed +25%". */
+// ---- Specs: always the same six tiles in the same order -------------------------------------
+
+/** [good] > 0 is an advantage (green), < 0 a drawback (red), 0 means unchanged. */
+private class SpecLine(val labelRes: Int, val value: String, val good: Int)
+
 @Composable
-private fun traitsText(c: GameCharacter): String {
+private fun percentText(percent: Int): String =
+    if (percent == 0) stringResource(R.string.char_spec_none) else stringResource(R.string.char_spec_percent_format, percent)
+
+@Composable
+private fun SpecGrid(c: GameCharacter) {
     fun pct(multiplier: Float): Int = ((multiplier - 1f) * 100f).roundToInt()
-    val parts = mutableListOf<String>()
-    if (c.healthMult != 1f) parts += stringResource(R.string.char_trait_health, pct(c.healthMult))
-    if (c.speedMult != 1f) parts += stringResource(R.string.char_trait_speed, pct(c.speedMult))
-    if (c.damageTakenMult != 1f) parts += stringResource(R.string.char_trait_damage_taken, pct(c.damageTakenMult))
-    if (c.regenPerSecond > 0f) parts += stringResource(R.string.char_trait_regen, String.format(Locale.getDefault(), "%.1f", c.regenPerSecond))
-    if (c.reloadTimeMult != 1f) parts += stringResource(R.string.char_trait_reload, pct(c.reloadTimeMult))
-    if (c.magazineMult != 1f) parts += stringResource(R.string.char_trait_magazine, pct(c.magazineMult))
-    return if (parts.isEmpty()) stringResource(R.string.char_trait_balanced) else parts.joinToString("  \u2022  ")
+    val health = pct(c.healthMult)
+    val speed = pct(c.speedMult)
+    val damageTaken = pct(c.damageTakenMult)
+    val reload = pct(c.reloadTimeMult)
+    val magazine = pct(c.magazineMult)
+    val regen = if (c.regenPerSecond > 0f) {
+        stringResource(R.string.char_spec_regen_format, String.format(Locale.getDefault(), "%.1f", c.regenPerSecond))
+    } else {
+        stringResource(R.string.char_spec_none)
+    }
+
+    val specs = listOf(
+        SpecLine(R.string.char_spec_health, percentText(health), Integer.signum(health)),
+        SpecLine(R.string.char_spec_speed, percentText(speed), Integer.signum(speed)),
+        SpecLine(R.string.char_spec_damage_taken, percentText(damageTaken), -Integer.signum(damageTaken)), // less is better
+        SpecLine(R.string.char_spec_regen, regen, if (c.regenPerSecond > 0f) 1 else 0),
+        SpecLine(R.string.char_spec_reload, percentText(reload), -Integer.signum(reload)), // shorter is better
+        SpecLine(R.string.char_spec_magazine, percentText(magazine), Integer.signum(magazine))
+    )
+
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        for (row in specs.chunked(2)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (spec in row) SpecTile(spec, Modifier.weight(1f))
+            }
+        }
+    }
 }
 
 @Composable
-private fun AbilityRow(ability: AbilityType) {
+private fun SpecTile(spec: SpecLine, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(8.dp)
+    val valueColor = when {
+        spec.good > 0 -> colorResource(R.color.neon_green)
+        spec.good < 0 -> MaterialTheme.colorScheme.error
+        else -> colorResource(R.color.neon_label)
+    }
     Row(
+        modifier = modifier
+            .height(26.dp)
+            .clip(shape)
+            .background(colorResource(R.color.survivor_background))
+            .border(1.dp, colorResource(R.color.neon_border), shape)
+            .padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            stringResource(spec.labelRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = colorResource(R.color.neon_label),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false)
+        )
+        Spacer(Modifier.width(4.dp))
+        Text(
+            spec.value,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.Bold,
+            color = valueColor,
+            maxLines = 1
+        )
+    }
+}
+
+// ---- Ability: icon, name, cooldown, description in one box ----------------------------------
+
+@Composable
+private fun AbilityBox(ability: AbilityType, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(10.dp)
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(colorResource(R.color.survivor_background))
+            .border(1.dp, colorResource(R.color.neon_border), shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         Icon(
             ability.icon(),
             contentDescription = null,
             tint = colorResource(R.color.control_ability),
-            modifier = Modifier.size(24.dp)
+            modifier = Modifier.size(26.dp)
         )
-        Column {
-            Text(
-                stringResource(ability.nameRes()),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold,
-                color = colorResource(R.color.neon_title)
-            )
+        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    stringResource(ability.nameRes()),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(R.color.neon_title),
+                    maxLines = 1
+                )
+                Text(
+                    stringResource(R.string.character_cooldown_format, ability.cooldownSeconds.roundToInt()),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorResource(R.color.neon_green_dim),
+                    maxLines = 1
+                )
+            }
             Text(
                 stringResource(ability.descriptionRes()),
                 style = MaterialTheme.typography.bodySmall,
-                color = colorResource(R.color.neon_label)
-            )
-            Text(
-                stringResource(R.string.character_cooldown_format, ability.cooldownSeconds.roundToInt()),
-                style = MaterialTheme.typography.labelSmall,
-                color = colorResource(R.color.neon_green_dim)
+                color = colorResource(R.color.neon_label),
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
-/** SELECTED badge for the chosen character, Select for an owned one, Unlock (with the diamond price) for a locked one. */
+// ---- Action: ONE full-width, fixed-height button; only its state changes ---------------------
+
 @Composable
 private fun CharacterActionButton(state: CharacterUiState, actions: CharacterActions) {
     val shape = RoundedCornerShape(10.dp)
+    val slot = Modifier.fillMaxWidth().height(38.dp)
     when {
-        state.selected -> Text(
-            stringResource(R.string.character_selected).uppercase(),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Bold,
-            color = colorResource(R.color.survivor_on_accent),
-            modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
-                .background(colorResource(R.color.neon_green))
-                .padding(horizontal = 8.dp, vertical = 2.dp)
-        )
+        // already chosen: same slot, outlined and not clickable
+        state.selected -> Box(
+            modifier = slot.clip(shape).border(1.5.dp, colorResource(R.color.neon_green), shape),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                stringResource(R.string.character_selected).uppercase(),
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.sp,
+                color = colorResource(R.color.neon_green)
+            )
+        }
         state.owned -> Button(
             onClick = actions.onSelect,
             shape = shape,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+            modifier = slot,
             colors = ButtonDefaults.buttonColors(
                 containerColor = colorResource(R.color.neon_green),
                 contentColor = colorResource(R.color.survivor_on_accent)
@@ -398,29 +436,29 @@ private fun CharacterActionButton(state: CharacterUiState, actions: CharacterAct
         ) {
             Text(stringResource(R.string.character_select).uppercase(), fontWeight = FontWeight.Bold, letterSpacing = 1.sp)
         }
-        else -> {
-            Button(
-                onClick = actions.onUnlock,
-                shape = shape,
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = colorResource(if (state.canAfford) R.color.powerup_diamond else R.color.neon_border),
-                    contentColor = colorResource(if (state.canAfford) R.color.survivor_on_accent else R.color.neon_label)
-                )
-            ) {
-                Icon(DiamondIcon, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(6.dp))
-                Text(
-                    stringResource(R.string.character_unlock_format, state.viewing.diamondPrice),
-                    fontWeight = FontWeight.Bold
-                )
-            }
-            if (!state.canAfford) {
-                Text(
-                    stringResource(R.string.character_need_more_format, state.viewing.diamondPrice - state.progress.diamonds),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorResource(R.color.neon_label)
-                )
-            }
+        // locked: always the diamond + one line; the text says what is missing when it is too expensive
+        else -> Button(
+            onClick = actions.onUnlock,
+            shape = shape,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 0.dp),
+            modifier = slot,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = colorResource(if (state.canAfford) R.color.powerup_diamond else R.color.neon_border),
+                contentColor = colorResource(if (state.canAfford) R.color.survivor_on_accent else R.color.neon_label)
+            )
+        ) {
+            Icon(DiamondIcon, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                if (state.canAfford) {
+                    stringResource(R.string.character_unlock_format, state.viewing.diamondPrice)
+                } else {
+                    stringResource(R.string.character_need_more_format, state.viewing.diamondPrice - state.progress.diamonds)
+                },
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }
@@ -436,80 +474,53 @@ private fun PageDot(selected: Boolean) {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Statistics grid
+// Lifetime statistics: one compact list inside the panel (label left, value right)
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun StatsGrid(state: CharacterUiState, columns: Int, compact: Boolean) {
+private fun LifetimeStats(state: CharacterUiState, compact: Boolean, modifier: Modifier = Modifier) {
     val stats = state.stats
-    val tiles = listOf(
-        StatTile(R.string.stat_highest_wave, number(state.progress.highestWave), highlight = true),
-        StatTile(R.string.stat_kills, number(stats.kills), highlight = true),
-        StatTile(R.string.stat_runs, number(stats.runs)),
-        StatTile(R.string.stat_bosses, number(stats.bossKills)),
-        StatTile(R.string.stat_accuracy, stringResource(R.string.stat_accuracy_format, stats.accuracyPercent)),
-        StatTile(R.string.stat_coins_earned, number(stats.coinsEarned), gold = true),
-        StatTile(R.string.stat_time, playTime(stats), span = 2)
+    val lines = listOf(
+        StatLine(R.string.stat_highest_wave, number(state.progress.highestWave), R.color.neon_green),
+        StatLine(R.string.stat_kills, number(stats.kills), R.color.neon_green),
+        StatLine(R.string.stat_runs, number(stats.runs), R.color.neon_title),
+        StatLine(R.string.stat_bosses, number(stats.bossKills), R.color.neon_title),
+        StatLine(R.string.stat_accuracy, stringResource(R.string.stat_accuracy_format, stats.accuracyPercent), R.color.neon_title),
+        StatLine(R.string.stat_coins_earned, number(stats.coinsEarned), R.color.coin_gold),
+        StatLine(R.string.stat_time, playTime(stats), R.color.neon_title)
     )
-
-    // Greedy rows: tiles are added to a row until its columns are used up.
-    val rows = mutableListOf<List<StatTile>>()
-    var current = mutableListOf<StatTile>()
-    var used = 0
-    for (tile in tiles) {
-        val span = tile.span.coerceAtMost(columns)
-        if (used + span > columns) {
-            rows += current
-            current = mutableListOf()
-            used = 0
-        }
-        current += tile
-        used += span
-    }
-    if (current.isNotEmpty()) rows += current
-
-    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (row in rows) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (tile in row) {
-                    StatTileCard(tile, compact, Modifier.weight(tile.span.coerceAtMost(columns).toFloat()))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun StatTileCard(tile: StatTile, compact: Boolean, modifier: Modifier = Modifier) {
-    val shape = RoundedCornerShape(10.dp)
-    val valueColor = when {
-        tile.highlight -> colorResource(R.color.neon_green)
-        tile.gold -> colorResource(R.color.coin_gold)
-        else -> colorResource(R.color.neon_title)
-    }
+    val shape = RoundedCornerShape(12.dp)
     Column(
         modifier = modifier
             .clip(shape)
-            .background(colorResource(R.color.neon_panel))
-            .border(1.dp, colorResource(if (tile.highlight) R.color.neon_green_dim else R.color.neon_border), shape)
-            .padding(horizontal = 8.dp, vertical = if (compact) 6.dp else 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .background(colorResource(R.color.survivor_background))
+            .border(1.dp, colorResource(R.color.neon_border), shape)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalArrangement = Arrangement.SpaceEvenly
     ) {
-        Text(
-            stringResource(tile.labelRes),
-            style = MaterialTheme.typography.labelSmall,
-            color = colorResource(R.color.neon_label),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-        Text(
-            tile.value,
-            style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = valueColor,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        for (line in lines) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    stringResource(line.labelRes),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = colorResource(R.color.neon_label),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
+                )
+                Text(
+                    line.value,
+                    style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(line.colorRes),
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
