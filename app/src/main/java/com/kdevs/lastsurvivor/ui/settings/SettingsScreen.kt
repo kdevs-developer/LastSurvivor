@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -22,11 +21,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.AlertDialog
@@ -73,7 +70,7 @@ private typealias SettingsUpdate = ((GameSettings) -> GameSettings) -> Unit
 /**
  * Options saved in DataStore. Every change applies at once and is picked up by the next run.
  * Two grouped panels (Feel, Display) side by side on wide screens or stacked on narrow ones, then a
- * danger strip for Reset progress. The page scrolls when it does not fit.
+ * danger strip for Reset progress. The page is fixed to the screen (no scrolling); panels share the available height.
  */
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -97,23 +94,22 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = viewModel(
                 modifier = Modifier
                     .widthIn(max = MaxContentWidth)
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
                     .padding(pad),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Header(onBack = { sounds.play(SoundEffect.UI_CLICK); onBack() })
 
                 if (twoPanels) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Max),
+                        modifier = Modifier.fillMaxWidth().weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         FeelPanel(settings, sounds, update, Modifier.weight(1f).fillMaxHeight())
                         DisplayPanel(settings, sounds, update, Modifier.weight(1f).fillMaxHeight())
                     }
                 } else {
-                    FeelPanel(settings, sounds, update, Modifier.fillMaxWidth())
-                    DisplayPanel(settings, sounds, update, Modifier.fillMaxWidth())
+                    FeelPanel(settings, sounds, update, Modifier.fillMaxWidth().weight(1f))
+                    DisplayPanel(settings, sounds, update, Modifier.fillMaxWidth().weight(1f))
                 }
 
                 DangerStrip(onReset = { sounds.play(SoundEffect.UI_CLICK); confirmReset = true })
@@ -236,7 +232,8 @@ private fun SettingsPanel(titleRes: Int, modifier: Modifier = Modifier, content:
             .clip(shape)
             .background(colorResource(R.color.neon_panel))
             .border(1.dp, colorResource(R.color.neon_border), shape)
-            .padding(horizontal = 14.dp, vertical = 6.dp)
+            .padding(horizontal = 14.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.Center
     ) {
         Text(
             text = stringResource(titleRes).uppercase(),
@@ -244,7 +241,7 @@ private fun SettingsPanel(titleRes: Int, modifier: Modifier = Modifier, content:
             fontWeight = FontWeight.Bold,
             color = colorResource(R.color.neon_green_dim),
             letterSpacing = 2.sp,
-            modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+            modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
         )
         content()
     }
@@ -267,9 +264,9 @@ private fun ToggleRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 48.dp)
+            .heightIn(min = 44.dp)
             .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
-            .padding(vertical = 8.dp),
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
@@ -307,14 +304,14 @@ private fun ToggleRow(
 /** Blood and gore: a three-way segmented control that fits any width. */
 @Composable
 private fun GoreRow(selected: GoreLevel, onSelect: (GoreLevel) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
         Text(
             stringResource(R.string.settings_gore),
             style = MaterialTheme.typography.bodyLarge,
             fontWeight = FontWeight.Medium,
             color = colorResource(R.color.neon_title)
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(6.dp))
         val shape = RoundedCornerShape(8.dp)
         Row(
             modifier = Modifier
@@ -362,7 +359,7 @@ private fun DangerStrip(onReset: () -> Unit) {
             .clip(shape)
             .background(colorResource(R.color.neon_panel))
             .border(1.dp, colorResource(R.color.settings_danger_border), shape)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
