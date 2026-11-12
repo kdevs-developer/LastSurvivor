@@ -3,6 +3,7 @@ package com.kdevs.lastsurvivor.game.render
 import android.content.Context
 import androidx.annotation.ColorRes
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.engine.GameArea
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
 
 /** The four colours that change between outfits. */
@@ -19,12 +20,30 @@ class GameColors(context: Context) {
 
     private fun c(@ColorRes id: Int): Int = ctx.getColor(id)
 
+    /** Switches the floor, border and decoration colours to [area]'s palette. Game thread only; rebuild the floor and decor bitmaps afterwards. */
+    fun applyArea(area: GameArea) {
+        floorBase = c(area.floorBase)
+        floorSpeck = c(area.floorSpeck)
+        floorLine = c(area.floorLine)
+        border = c(area.border)
+        decorCrack = c(area.decorCrack)
+        decorStain = c(area.decorStain)
+        decorRubble = c(area.decorRubble)
+        decorRubbleLight = c(area.decorRubbleLight)
+        decorMark = c(area.decorMark)
+    }
+
     // world
     val clear = c(R.color.world_clear)
-    val floorBase = c(R.color.world_floor_base)
-    val floorSpeck = c(R.color.world_floor_speck)
-    val floorLine = c(R.color.world_floor_line)
-    val border = c(R.color.world_border)
+    // these seven + the decor colours below follow the map area (see applyArea)
+    var floorBase = c(R.color.world_floor_base)
+        private set
+    var floorSpeck = c(R.color.world_floor_speck)
+        private set
+    var floorLine = c(R.color.world_floor_line)
+        private set
+    var border = c(R.color.world_border)
+        private set
     val shadow = c(R.color.world_shadow)
     val pauseDim = c(R.color.world_pause_dim)
 
@@ -102,11 +121,16 @@ class GameColors(context: Context) {
     val decalBlood = c(R.color.decal_blood)
     val decalGoo = c(R.color.decal_goo)
     val decalScorch = c(R.color.decal_scorch)
-    val decorCrack = c(R.color.decor_crack)
-    val decorStain = c(R.color.decor_stain)
-    val decorRubble = c(R.color.decor_rubble)
-    val decorRubbleLight = c(R.color.decor_rubble_light)
-    val decorMark = c(R.color.decor_mark)
+    var decorCrack = c(R.color.decor_crack)
+        private set
+    var decorStain = c(R.color.decor_stain)
+        private set
+    var decorRubble = c(R.color.decor_rubble)
+        private set
+    var decorRubbleLight = c(R.color.decor_rubble_light)
+        private set
+    var decorMark = c(R.color.decor_mark)
+        private set
     val spriteOutline = c(R.color.sprite_outline)
     val spriteHighlight = c(R.color.sprite_highlight)
     val spriteShade = c(R.color.sprite_shade)

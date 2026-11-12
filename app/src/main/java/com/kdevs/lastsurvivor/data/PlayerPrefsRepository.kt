@@ -13,6 +13,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.kdevs.lastsurvivor.game.engine.GameSettings
+import com.kdevs.lastsurvivor.game.engine.Campaign
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.game.engine.RunTotals
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
@@ -84,6 +85,7 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         val UNLOCKED_CHARACTERS = stringSetPreferencesKey("unlocked_characters")
         val SELECTED_CHARACTER = stringPreferencesKey("selected_character")
         val CHECKPOINT = stringPreferencesKey("run_checkpoint")
+        val CAMPAIGN_CLEARED = intPreferencesKey("campaign_cleared")
         val STAT_RUNS = intPreferencesKey("stat_runs")
         val STAT_KILLS = intPreferencesKey("stat_kills")
         val STAT_SHOTS = intPreferencesKey("stat_shots_fired")
@@ -214,6 +216,21 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
     }
 
     val stats: Flow<PlayerStats> = data.map { it.toStats() }.distinctUntilChanged()
+
+    // ---------------- Campaign ----------------
+
+    /** The highest campaign level cleared so far (0 = none). Level [campaignCleared] + 1 is the next one to unlock. */
+    val campaignCleared: Flow<Int> = data
+        .map { (it[Keys.CAMPAIGN_CLEARED] ?: 0).coerceIn(0, Campaign.count) }
+        .distinctUntilChanged()
+
+    /** Records that [level] was cleared; never lowers the progress. */
+    suspend fun completeLevel(level: Int) {
+        store.edit { prefs ->
+            val cleared = (prefs[Keys.CAMPAIGN_CLEARED] ?: 0).coerceIn(0, Campaign.count)
+            if (level.coerceIn(0, Campaign.count) > cleared) prefs[Keys.CAMPAIGN_CLEARED] = level.coerceIn(0, Campaign.count)
+        }
+    }
 
     /** The saved wave to continue from, or null if there is none (or it is damaged). */
     val checkpoint: Flow<RunCheckpoint?> = data.map { RunCheckpoint.decode(it[Keys.CHECKPOINT]) }.distinctUntilChanged()

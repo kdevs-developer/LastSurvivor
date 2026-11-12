@@ -48,6 +48,13 @@ object GameConfig {
     /** Coins awarded for clearing a wave: this times the wave number. */
     const val WAVE_CLEAR_COINS_PER_WAVE = 5
 
+    // ---- Campaign levels ----
+    /** Each campaign level starts this many "waves" tougher than the one before (count, health, speed, zombie types). */
+    const val CAMPAIGN_OFFSET_PER_LEVEL = 2
+    /** Level complete bonus: coins = this x level number, plus a few diamonds. */
+    const val LEVEL_COMPLETE_COINS_PER_LEVEL = 50
+    const val LEVEL_COMPLETE_DIAMONDS = 3
+
     // ---- Phase 8: power-ups ----
     const val POWERUP_RADIUS = 22f
     /** How long a dropped power-up stays on the ground, and how many of those seconds it blinks. */

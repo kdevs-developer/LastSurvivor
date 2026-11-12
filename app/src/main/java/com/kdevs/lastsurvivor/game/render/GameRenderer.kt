@@ -14,6 +14,7 @@ import android.graphics.Shader
 import android.graphics.Typeface
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.engine.GameConfig
+import com.kdevs.lastsurvivor.game.engine.GameArea
 import com.kdevs.lastsurvivor.game.engine.GameWorld
 import com.kdevs.lastsurvivor.game.effects.FloatingTexts
 import com.kdevs.lastsurvivor.game.effects.ParticleSystem
@@ -173,7 +174,20 @@ class GameRenderer(context: Context) {
     private val sprintText = resources.getString(R.string.hud_sprint)
     private val grenadeText = resources.getString(R.string.hud_grenade)
 
+    /** The map theme the floor bitmaps are currently drawn for. */
+    private var currentArea: GameArea? = null
+
+    /** Redraws the floor, decoration and border in [area]'s colours. Runs on the game thread, only when the area changes. */
+    private fun applyArea(area: GameArea) {
+        colors.applyArea(area)
+        sprites.rebuildArea()
+        floorPaint.shader = BitmapShader(sprites.floorTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+        boundsPaint.color = colors.border
+        currentArea = area
+    }
+
     fun render(canvas: Canvas, world: GameWorld, fps: Int, paused: Boolean) {
+        if (world.area != currentArea) applyArea(world.area)
         canvas.drawColor(colors.clear)
         sprites.applySkin(world.character) // no-op unless the outfit was changed
 

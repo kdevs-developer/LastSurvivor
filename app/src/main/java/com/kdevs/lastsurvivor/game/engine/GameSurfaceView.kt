@@ -33,6 +33,9 @@ class GameSurfaceView(context: Context) : SurfaceView(context), SurfaceHolder.Ca
     /** Equips the weapon (with its saved upgrades) for this run. */
     fun equipWeapon(stats: WeaponStats) = world.requestEquip(stats)
 
+    /** Chooses the campaign level or endless area; the run restarts from wave 1 with it. */
+    fun setSetup(setup: RunSetup) = world.requestSetup(setup)
+
     /** Starts a fresh run after game over. */
     fun restart() = world.requestRestart()
 

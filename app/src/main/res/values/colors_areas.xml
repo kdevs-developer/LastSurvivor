@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: map areas. The Ruined City reuses the world_* and decor_* colours from colors.xml / colors_effects.xml;
+     the other areas have their own floor, border and decoration colours here. area_*_accent is the UI highlight. -->
+<resources>
+    <color name="area_city_accent">#FFB0BEC5</color>
+
+    <!-- swamp -->
+    <color name="area_swamp_floor_base">#FF14241A</color>
+    <color name="area_swamp_floor_speck">#FF1A3023</color>
+    <color name="area_swamp_floor_line">#FF0E1A12</color>
+    <color name="area_swamp_border">#FF39C23A</color>
+    <color name="area_swamp_decor_crack">#FF08140C</color>
+    <color name="area_swamp_decor_stain">#59102A10</color>
+    <color name="area_swamp_decor_rubble">#FF1F3A26</color>
+    <color name="area_swamp_decor_rubble_light">#FF2D5236</color>
+    <color name="area_swamp_decor_mark">#66A5D63F</color>
+    <color name="area_swamp_accent">#FF7CFF4F</color>
+
+    <!-- desert -->
+    <color name="area_desert_floor_base">#FF3A2F20</color>
+    <color name="area_desert_floor_speck">#FF463A27</color>
+    <color name="area_desert_floor_line">#FF2E2518</color>
+    <color name="area_desert_border">#FFE08A2E</color>
+    <color name="area_desert_decor_crack">#FF2A2014</color>
+    <color name="area_desert_decor_stain">#59261B0E</color>
+    <color name="area_desert_decor_rubble">#FF5A4A33</color>
+    <color name="area_desert_decor_rubble_light">#FF74603F</color>
+    <color name="area_desert_decor_mark">#66E0C35A</color>
+    <color name="area_desert_accent">#FFFFB74D</color>
+
+    <!-- tundra -->
+    <color name="area_tundra_floor_base">#FF1F2A33</color>
+    <color name="area_tundra_floor_speck">#FF27343F</color>
+    <color name="area_tundra_floor_line">#FF18222A</color>
+    <color name="area_tundra_border">#FF4FC3F7</color>
+    <color name="area_tundra_decor_crack">#FF0F1820</color>
+    <color name="area_tundra_decor_stain">#590C1620</color>
+    <color name="area_tundra_decor_rubble">#FF33434F</color>
+    <color name="area_tundra_decor_rubble_light">#FF465A69</color>
+    <color name="area_tundra_decor_mark">#66B3E5FC</color>
+    <color name="area_tundra_accent">#FF81D4FA</color>
+
+    <!-- graveyard -->
+    <color name="area_graveyard_floor_base">#FF211A2B</color>
+    <color name="area_graveyard_floor_speck">#FF2A2236</color>
+    <color name="area_graveyard_floor_line">#FF18121F</color>
+    <color name="area_graveyard_border">#FFAB47BC</color>
+    <color name="area_graveyard_decor_crack">#FF0E0A14</color>
+    <color name="area_graveyard_decor_stain">#59120A1A</color>
+    <color name="area_graveyard_decor_rubble">#FF372C46</color>
+    <color name="area_graveyard_decor_rubble_light">#FF4A3C5E</color>
+    <color name="area_graveyard_decor_mark">#66CE93D8</color>
+    <color name="area_graveyard_accent">#FFCE93D8</color>
+
+</resources>

@@ -26,7 +26,8 @@ class SpriteAtlas(private val context: Context, private val colors: GameColors) 
         const val DECOR_SIZE = 128
     }
 
-    val floorTile: Bitmap = load("floor.png") ?: PlaceholderSprites.floorTile(FLOOR_SIZE, colors)
+    var floorTile: Bitmap = load("floor.png") ?: PlaceholderSprites.floorTile(FLOOR_SIZE, colors)
+        private set
 
     /** The outfit the current [playerSprites] are drawn in. */
     var skin: GameCharacter = GameCharacter.SURVIVOR
@@ -70,8 +71,17 @@ class SpriteAtlas(private val context: Context, private val colors: GameColors) 
     }
     val scorchDecal: Bitmap = load("decal_scorch.png") ?: PlaceholderSprites.scorch(DECAL_SIZE, colors.decalScorch)
 
-    val decor: Array<Bitmap> = Array(PlaceholderSprites.DECOR_KINDS) { k ->
+    var decor: Array<Bitmap> = buildDecor()
+        private set
+
+    private fun buildDecor(): Array<Bitmap> = Array(PlaceholderSprites.DECOR_KINDS) { k ->
         load("decor_$k.png") ?: PlaceholderSprites.decor(k, DECOR_SIZE, colors, 300 + k)
+    }
+
+    /** Redraws the generated floor and decoration after [GameColors.applyArea] changed the palette. PNG overrides stay as they are. */
+    fun rebuildArea() {
+        floorTile = load("floor.png") ?: PlaceholderSprites.floorTile(FLOOR_SIZE, colors)
+        decor = buildDecor()
     }
 
     /** The decal bitmap for a [DecalField] entry. */

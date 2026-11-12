@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: game modes (Campaign / Infinite), areas and the level complete screen. -->
+<resources>
+    <string name="mode_title">SELECT MODE</string>
+    <string name="mode_campaign">Campaign</string>
+    <string name="mode_infinite">Infinite</string>
+    <string name="mode_level_format">%1$d</string>
+    <string name="mode_level_info_format">Level %1$d  \u2022  %2$s  \u2022  %3$d waves  \u2022  boss finale</string>
+    <string name="mode_level_locked_format">Level %1$d  \u2022  clear level %2$d to unlock</string>
+    <string name="mode_infinite_info_format">%1$s  \u2022  endless waves, a boss every 5th</string>
+    <string name="mode_start_level_format">START LEVEL %1$d</string>
+    <string name="mode_start_infinite">START INFINITE</string>
+    <string name="mode_level_locked">Locked</string>
+    <string name="mode_level_cleared">Cleared</string>
+
+    <!-- Areas: a different floor, border and decoration colours. Gameplay is the same everywhere. -->
+    <string name="area_city">Ruined City</string>
+    <string name="area_swamp">Toxic Swamp</string>
+    <string name="area_desert">Dust Wasteland</string>
+    <string name="area_tundra">Frozen Tundra</string>
+    <string name="area_graveyard">Haunted Graveyard</string>
+
+    <string name="hud_level_wave_format">LVL %1$d  \u2022  WAVE %2$d/%3$d</string>
+
+    <string name="level_complete_title">LEVEL COMPLETE</string>
+    <string name="level_complete_level_format">Level %1$d cleared</string>
+    <string name="level_complete_bonus_format">Level bonus: +%1$d coins, +%2$d diamonds</string>
+    <string name="level_complete_campaign_done">Campaign complete! You survived every level.</string>
+    <string name="level_next">Next level</string>
+    <string name="level_replay">Replay</string>
+</resources>

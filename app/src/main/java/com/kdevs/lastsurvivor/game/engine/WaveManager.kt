@@ -27,6 +27,21 @@ class WaveManager(private val world: GameWorld) {
     var clearedBonus: Int = 0
         private set
 
+    /** What is being played: a campaign level (fixed length, boss on the last wave) or the endless mode. */
+    var setup: RunSetup = RunSetup.DEFAULT
+        private set
+
+    /** True once the last wave of a campaign level is cleared. The world then stops simulating. */
+    var levelComplete: Boolean = false
+        private set
+
+    /** Campaign levels start tougher; this shifts the wave number used for count, health, speed and zombie types. */
+    private val offset: Int get() = setup.levelData?.difficultyOffset ?: 0
+    private fun scaled(w: Int): Int = w + offset
+
+    /** Sets the mode and level. Call before [reset]. */
+    fun configure(newSetup: RunSetup) { setup = newSetup }
+
     /** Zombies of the current wave that have not spawned yet. */
     private var toSpawn = 0
     private var spawnTimer = 0f
@@ -39,13 +54,15 @@ class WaveManager(private val world: GameWorld) {
     /** True when the current wave (the one counting down or in progress) has a boss. */
     val isBossWave: Boolean get() = isBossWave(wave)
 
-    private fun isBossWave(w: Int): Boolean = w % GameConfig.BOSS_WAVE_INTERVAL == 0
+    private fun isBossWave(w: Int): Boolean =
+        if (setup.isCampaign) w == setup.totalWaves else w % GameConfig.BOSS_WAVE_INTERVAL == 0
 
     fun reset() {
         wave = 1
         phase = WavePhase.COUNTDOWN
         countdown = GameConfig.FIRST_WAVE_COUNTDOWN
         clearedBonus = 0
+        levelComplete = false
         toSpawn = 0
         spawnTimer = 0f
     }
@@ -58,6 +75,7 @@ class WaveManager(private val world: GameWorld) {
     }
 
     fun update(dt: Float) {
+        if (levelComplete) return
         when (phase) {
             WavePhase.COUNTDOWN -> {
                 countdown -= dt
@@ -70,7 +88,7 @@ class WaveManager(private val world: GameWorld) {
     private fun startWave() {
         phase = WavePhase.ACTIVE
         clearedBonus = 0
-        val normalCount = min(GameConfig.WAVE_BASE_COUNT + GameConfig.WAVE_COUNT_PER_WAVE * wave, GameConfig.WAVE_MAX_COUNT)
+        val normalCount = min(GameConfig.WAVE_BASE_COUNT + GameConfig.WAVE_COUNT_PER_WAVE * scaled(wave), GameConfig.WAVE_MAX_COUNT)
         toSpawn = if (isBossWave) (normalCount * GameConfig.BOSS_WAVE_ESCORT_FRACTION).toInt() else normalCount
         spawnTimer = 0.5f
         if (isBossWave) {
@@ -84,7 +102,8 @@ class WaveManager(private val world: GameWorld) {
 
     /** Bosses alternate through the boss types and get tougher each time. */
     private fun spawnBoss() {
-        val bossNumber = wave / GameConfig.BOSS_WAVE_INTERVAL // 1 for the first boss
+        // endless: every 5th wave, 1 for the first boss; campaign: the level number (the finale of each level)
+        val bossNumber = if (setup.isCampaign) setup.level else wave / GameConfig.BOSS_WAVE_INTERVAL
         val type = bosses[(bossNumber - 1) % bosses.size]
         val healthScale = 1f + GameConfig.BOSS_HEALTH_PER_BOSS * (bossNumber - 1)
         spawnOffscreen(type, healthScale, 1f)
@@ -93,8 +112,8 @@ class WaveManager(private val world: GameWorld) {
     /** A Brood Mother's summon: [count] Walkers in a ring just outside the boss. */
     fun spawnMinions(cx: Float, cy: Float, ringRadius: Float, count: Int) {
         val type = ZombieType.WALKER
-        val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (wave - 1)
-        val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (wave - 1))
+        val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (scaled(wave) - 1)
+        val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (scaled(wave) - 1))
         val start = Random.nextFloat() * (2f * Math.PI.toFloat())
         for (i in 0 until count) {
             val a = start + i * (2f * Math.PI.toFloat() / count)
@@ -120,24 +139,32 @@ class WaveManager(private val world: GameWorld) {
     }
 
     private fun clearWave() {
-        clearedBonus = GameConfig.WAVE_CLEAR_COINS_PER_WAVE * wave *
+        clearedBonus = GameConfig.WAVE_CLEAR_COINS_PER_WAVE * scaled(wave) *
             (if (isBossWave) GameConfig.BOSS_CLEAR_COIN_MULT else 1)
         world.addCoins(clearedBonus)
         world.playSound(SoundEffect.WAVE_CLEAR)
+        val level = setup.levelData
+        if (level != null && wave >= level.waves) {
+            // last wave of the level: pay the level bonus and stop here instead of counting down to another wave
+            world.addCoins(level.bonusCoins)
+            world.addDiamonds(level.bonusDiamonds)
+            levelComplete = true
+            return
+        }
         wave++
         phase = WavePhase.COUNTDOWN
         countdown = GameConfig.WAVE_COUNTDOWN
     }
 
     private fun spawnInterval(): Float =
-        max(GameConfig.WAVE_MIN_SPAWN_INTERVAL, GameConfig.WAVE_SPAWN_INTERVAL - GameConfig.WAVE_SPAWN_INTERVAL_STEP * wave)
+        max(GameConfig.WAVE_MIN_SPAWN_INTERVAL, GameConfig.WAVE_SPAWN_INTERVAL - GameConfig.WAVE_SPAWN_INTERVAL_STEP * scaled(wave))
 
     private fun maxAlive(): Int =
-        min(GameConfig.WAVE_MAX_ALIVE_BASE + GameConfig.WAVE_MAX_ALIVE_PER_WAVE * wave, GameConfig.WAVE_MAX_ALIVE_CAP)
+        min(GameConfig.WAVE_MAX_ALIVE_BASE + GameConfig.WAVE_MAX_ALIVE_PER_WAVE * scaled(wave), GameConfig.WAVE_MAX_ALIVE_CAP)
 
     private fun spawnOne() {
-        val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (wave - 1)
-        val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (wave - 1))
+        val healthScale = 1f + GameConfig.WAVE_HEALTH_STEP * (scaled(wave) - 1)
+        val speedScale = min(GameConfig.WAVE_SPEED_CAP, 1f + GameConfig.WAVE_SPEED_STEP * (scaled(wave) - 1))
         spawnOffscreen(pickType(), healthScale, speedScale)
     }
 
@@ -155,10 +182,11 @@ class WaveManager(private val world: GameWorld) {
     /** Weighted pick among the types unlocked at this wave. */
     private fun pickType(): ZombieType {
         var total = 0
-        for (t in types) if (t.unlockWave <= wave) total += t.spawnWeight
+        val w = scaled(wave)
+        for (t in types) if (t.unlockWave <= w) total += t.spawnWeight
         var roll = Random.nextInt(total)
         for (t in types) {
-            if (t.unlockWave > wave) continue
+            if (t.unlockWave > w) continue
             roll -= t.spawnWeight
             if (roll < 0) return t
         }

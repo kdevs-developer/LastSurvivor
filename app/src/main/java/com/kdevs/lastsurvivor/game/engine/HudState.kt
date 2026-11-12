@@ -48,5 +48,12 @@ data class HudState(
     /** The character's active ability. */
     val ability: AbilityType = AbilityType.ADRENALINE,
     /** 0..100 in steps of 5: how far the ability's cooldown has recovered. 100 = ready. */
-    val abilityPercent: Int = 100
+    val abilityPercent: Int = 100,
+    // ---- Modes ----
+    /** Waves in the campaign level being played; 0 in the endless mode. */
+    val totalWaves: Int = 0,
+    /** Campaign level number; 0 in the endless mode. */
+    val level: Int = 0,
+    /** The last wave of the campaign level was cleared. */
+    val levelComplete: Boolean = false
 )

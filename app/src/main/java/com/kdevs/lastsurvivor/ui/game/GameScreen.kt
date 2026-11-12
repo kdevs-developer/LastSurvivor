@@ -35,8 +35,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -51,7 +53,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
+import com.kdevs.lastsurvivor.game.engine.Campaign
 import com.kdevs.lastsurvivor.game.engine.GameSurfaceView
+import com.kdevs.lastsurvivor.game.engine.RunSetup
 import com.kdevs.lastsurvivor.game.engine.WavePhase
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
 import com.kdevs.lastsurvivor.ui.game.controls.GameControls
@@ -60,6 +64,7 @@ import com.kdevs.lastsurvivor.ui.game.hud.WaveBannerOverlay
 
 @Composable
 fun GameScreen(
+    setup: RunSetup,
     continueRun: Boolean,
     onExit: () -> Unit,
     viewModel: GameSessionViewModel = viewModel()
@@ -73,12 +78,19 @@ fun GameScreen(
     val settings by viewModel.settings.collectAsStateWithLifecycle()
     val sounds = rememberSoundManager()
 
+    // What is being played: the level or area picked on the mode screen, or (Continue) the one saved in the checkpoint.
+    var current by remember { mutableStateOf(setup) }
+
     // Equip the weapon and character chosen on the upgrades and character screens, then start the run:
-    // either from the saved checkpoint (Continue) or from wave 1.
+    // either from the saved checkpoint (Continue) or from wave 1 of the chosen level or area.
     LaunchedEffect(Unit) {
+        val saved = if (continueRun) viewModel.loadCheckpoint() else null
+        val start = saved?.setup ?: setup
+        current = start
+        viewModel.setSetup(start)
+        gameView.setSetup(start)
         gameView.equipWeapon(viewModel.loadEquippedWeapon())
         gameView.setCharacter(viewModel.loadCharacter())
-        val saved = if (continueRun) viewModel.loadCheckpoint() else null
         viewModel.beginRun(continued = saved != null)
         if (saved != null) gameView.continueRun(saved.wave, saved.health, saved.grenades)
     }
@@ -97,6 +109,14 @@ fun GameScreen(
         if (hud.gameOver) {
             gameView.input.reset()
             viewModel.endRun(hud, gameView.runTotals(), died = true)
+        }
+    }
+
+    // Last wave of a campaign level cleared: release the controls, bank the run and unlock the next level.
+    LaunchedEffect(hud.levelComplete) {
+        if (hud.levelComplete) {
+            gameView.input.reset()
+            viewModel.completeLevel(hud, gameView.runTotals(), current.level)
         }
     }
 
@@ -127,7 +147,7 @@ fun GameScreen(
 
     BackHandler {
         when {
-            hud.gameOver -> quit()
+            hud.gameOver || hud.levelComplete -> quit()
             paused -> viewModel.resume()
             else -> viewModel.pause()
         }
@@ -141,6 +161,25 @@ fun GameScreen(
             GameOverOverlay(
                 hud = hud,
                 onRetry = {
+                    viewModel.beginRun(continued = false)
+                    gameView.restart()
+                },
+                onQuit = quit
+            )
+        } else if (hud.levelComplete) {
+            GameHud(hud)
+            LevelCompleteOverlay(
+                hud = hud,
+                level = Campaign.level(current.level),
+                hasNext = current.level < Campaign.count,
+                onNext = {
+                    val next = RunSetup.campaign(current.level + 1)
+                    current = next
+                    viewModel.setSetup(next)
+                    viewModel.beginRun(continued = false)
+                    gameView.setSetup(next)
+                },
+                onReplay = {
                     viewModel.beginRun(continued = false)
                     gameView.restart()
                 },

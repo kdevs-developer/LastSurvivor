@@ -140,7 +140,11 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = stringResource(R.string.hud_wave_format, hud.wave),
+                    text = if (hud.totalWaves > 0) {
+                        stringResource(R.string.hud_level_wave_format, hud.level, hud.wave, hud.totalWaves)
+                    } else {
+                        stringResource(R.string.hud_wave_format, hud.wave)
+                    },
                     color = colorResource(R.color.neon_green),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Black,
@@ -271,11 +275,14 @@ private fun AmmoDisplay(hud: HudState, modifier: Modifier = Modifier) {
     }
 }
 
-/** Boss that spawns on [wave]; the same rotation as the wave spawner (the first boss is wave 5, then 10...). */
-private fun bossForWave(wave: Int): ZombieType? {
+/**
+ * Boss that spawns on [wave]; the same rotation as the wave spawner. Endless: the first boss is wave 5, then 10...
+ * Campaign ([level] > 0): the finale of level N is boss number N.
+ */
+private fun bossForWave(wave: Int, level: Int): ZombieType? {
     val bosses = ZombieType.entries.filter { it.isBoss }
     if (bosses.isEmpty()) return null
-    val bossNumber = (wave / GameConfig.BOSS_WAVE_INTERVAL).coerceAtLeast(1)
+    val bossNumber = if (level > 0) level else (wave / GameConfig.BOSS_WAVE_INTERVAL).coerceAtLeast(1)
     return bosses[(bossNumber - 1) % bosses.size]
 }
 
@@ -291,7 +298,7 @@ private fun WaveBanner(hud: HudState, modifier: Modifier = Modifier) {
     val line = colorResource(if (boss) R.color.wave_band_boss_line else R.color.wave_band_line)
     val background = colorResource(if (boss) R.color.wave_band_boss_bg else R.color.wave_band_bg)
     val track = colorResource(if (boss) R.color.wave_ring_track_boss else R.color.wave_ring_track)
-    val bossType = remember(hud.wave, boss) { if (boss) bossForWave(hud.wave) else null }
+    val bossType = remember(hud.wave, hud.level, boss) { if (boss) bossForWave(hud.wave, hud.level) else null }
     val totalSeconds = if (hud.wave <= 1) GameConfig.FIRST_WAVE_COUNTDOWN else GameConfig.WAVE_COUNTDOWN
 
     // Compact card sized to its content: it only takes the middle of the screen, so the HUD and the

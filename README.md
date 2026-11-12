@@ -23,6 +23,42 @@ Survive as many waves as you can. Each wave sends more zombies, faster and tough
 
 ---
 
+## Game modes
+
+Play opens the **Mode select** screen with two tabs. Tap a tile, then press Start.
+
+### Campaign
+
+Ten levels, each set in its own **area** with a fixed number of waves and a **boss finale** on the last wave. Clear the last wave to complete the level, earn a level bonus (50 coins x the level number, plus 3 diamonds) and unlock the next one. Later levels start tougher: more zombies, more health, more speed and the heavy zombie types sooner.
+
+| Levels | Area | Waves per level |
+| ------ | ---- | --------------- |
+| 1 - 2 | Ruined City | 5, 6 |
+| 3 - 4 | Toxic Swamp | 6, 7 |
+| 5 - 6 | Dust Wasteland | 7, 8 |
+| 7 - 8 | Frozen Tundra | 8, 9 |
+| 9 - 10 | Haunted Graveyard | 9, 10 |
+
+The Brute and the Brood Mother alternate as the finale boss of each level, getting tougher every level. Campaign waves do not count towards your Infinite best wave. Cleared levels show a tick, and Continue brings back an unfinished level.
+
+### Infinite
+
+Endless waves with a boss every 5th wave, in the area you pick. You play until you die, and your best wave is saved.
+
+### Areas
+
+Areas change the look only: the floor, the map border and the decoration. Gameplay is the same everywhere.
+
+| Area | Look |
+| ---- | ---- |
+| Ruined City | Cracked grey asphalt with a red border |
+| Toxic Swamp | Murky green ground with a toxic green border |
+| Dust Wasteland | Sandy brown ground with an orange border |
+| Frozen Tundra | Cold blue-grey ground with an icy blue border |
+| Haunted Graveyard | Dark purple ground with a violet border |
+
+---
+
 ## Zombies
 
 | Zombie | Appears from | Notes |
@@ -82,7 +118,7 @@ Six playable characters, each with different stats and one active ability. Survi
 | Engineer | 200 diamonds | Health -10% | Turret: auto-fires for 10 s (25 s) |
 | Commando | 300 diamonds | Reload time -30%, magazine +30% | Rage: rapid fire and double damage for 6 s (25 s) |
 
-The Characters screen shows one character at a time in a single compact panel: use the arrows to browse, and see the stats, ability, price and your lifetime statistics together without scrolling.
+The Characters screen shows one character at a time in a single compact panel with the same layout for everyone: use the arrows to browse, and only the values change. Each character shows the same six spec tiles (Health, Speed, Damage taken, Regen, Reload time, Magazine; green is an advantage, red a drawback), the ability, a Select or Unlock button, and your lifetime statistics, all without scrolling.
 
 ---
 
@@ -108,10 +144,11 @@ You start every run with 2 grenades (max 5). A grenade slides to a stop, then ex
 
 ## Coins, diamonds and progress
 
+- **Level bonus (Campaign):** completing a level pays 50 coins x the level number and 3 diamonds.
 - **Coins** come from kills (Walker 1, Runner 2, Toxic 3, Tank 5) and from clearing waves (5 x wave number). Spend them on weapons and upgrades.
 - **Diamonds** are rare drops from zombies (Walker 3%, Runner 4%, Toxic 6%, Tank 15%), and bosses always drop 5. Spend them on new characters.
 - **Health:** you have 100 HP. After a zombie hit you are briefly invulnerable, so a crowd cannot kill you in a single instant.
-- **Continue:** the start of every wave from wave 2 is saved. Continue on the main menu restarts that wave with your saved grenades and at least 50% health. Dying clears the save.
+- **Continue:** the start of every wave from wave 2 is saved. Continue on the main menu restarts that wave, in the same level or area, with your saved grenades and at least 50% health. Dying clears the save.
 - **Everything is saved automatically:** coins, diamonds, kills, best wave, unlocked weapons and characters, upgrades, settings and lifetime statistics.
 
 ### Lifetime statistics
@@ -122,7 +159,8 @@ The Characters screen tracks best wave, zombies killed, runs played, bosses defe
 
 ## Screens
 
-- **Main menu:** a big Play button, then Continue (shows the saved wave and health), Armory, Characters and Options. Coins and diamonds are shown top left; best wave, total kills and the sound switch top right. A rotating survival tip sits at the bottom.
+- **Mode select:** Campaign (ten levels on different areas) or Infinite (pick an area), then Start.
+- **Main menu:** a big Play button (opens Mode select), then Continue (shows the saved wave and health), Armory, Characters and Options. Coins and diamonds are shown top left; best wave, total kills and the sound switch top right. A rotating survival tip sits at the bottom.
 - **Armory:** buy, equip and upgrade weapons.
 - **Characters:** browse, unlock and select characters, and view your lifetime statistics.
 - **Options:** sound, screen shake, damage numbers, FPS counter, blood and gore level (Off / Low / Normal), and Reset progress.

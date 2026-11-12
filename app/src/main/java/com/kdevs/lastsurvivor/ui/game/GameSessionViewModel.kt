@@ -8,6 +8,7 @@ import com.kdevs.lastsurvivor.data.RunCheckpoint
 import com.kdevs.lastsurvivor.data.persistenceScope
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.HudState
+import com.kdevs.lastsurvivor.game.engine.RunSetup
 import com.kdevs.lastsurvivor.game.engine.RunTotals
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.weapons.WeaponStats
@@ -50,6 +51,14 @@ class GameSessionViewModel(app: Application) : AndroidViewModel(app) {
     private var banked = RunTotals()
     private var runEnded = false
 
+    /** What is being played; saved in the Continue checkpoint. Set by the game screen before the run starts. */
+    private var setup: RunSetup = RunSetup.DEFAULT
+
+    fun setSetup(newSetup: RunSetup) { setup = newSetup }
+
+    /** Campaign waves never count as the endless "best wave" (they are capped by the level), so those runs bank wave 0. */
+    private fun bankedWave(wave: Int): Int = if (setup.isCampaign) 0 else wave
+
     fun pause() { _paused.value = true }
     fun resume() { _paused.value = false }
 
@@ -66,14 +75,14 @@ class GameSessionViewModel(app: Application) : AndroidViewModel(app) {
 
     /** A new wave is about to start: bank progress and save the Continue checkpoint. */
     fun checkpoint(hud: HudState, totals: RunTotals) {
-        if (runEnded || hud.gameOver || hud.wave < 2) return
-        bank(totals, hud.wave, RunCheckpoint(hud.wave, hud.health, hud.grenades), clear = false)
+        if (runEnded || hud.gameOver || hud.levelComplete || hud.wave < 2) return
+        bank(totals, bankedWave(hud.wave), RunCheckpoint(hud.wave, hud.health, hud.grenades, setup), clear = false)
     }
 
     /** The app is leaving the foreground: bank what was earned, keep the checkpoint as it is. */
     fun bankProgress(hud: HudState, totals: RunTotals) {
         if (runEnded) return
-        bank(totals, hud.wave, null, clear = false)
+        bank(totals, bankedWave(hud.wave), null, clear = false)
     }
 
     /**
@@ -83,7 +92,13 @@ class GameSessionViewModel(app: Application) : AndroidViewModel(app) {
     fun endRun(hud: HudState, totals: RunTotals, died: Boolean) {
         if (runEnded) return
         runEnded = true
-        bank(totals, hud.wave, null, clear = died)
+        bank(totals, bankedWave(hud.wave), null, clear = died)
+    }
+
+    /** The last wave of campaign [level] was cleared: bank the run, drop the checkpoint and unlock the next level. */
+    fun completeLevel(hud: HudState, totals: RunTotals, level: Int) {
+        endRun(hud, totals, died = true) // "died" here only means: discard the checkpoint
+        persistenceScope.launch { repository.completeLevel(level) }
     }
 
     private fun bank(totals: RunTotals, wave: Int, checkpoint: RunCheckpoint?, clear: Boolean) {

@@ -86,6 +86,20 @@ class GameWorld {
     val weapon = WeaponState()
     private val pendingWeapon = AtomicReference<WeaponStats?>(null)
     private val restartRequested = AtomicBoolean(false)
+
+    /** What is being played (campaign level or endless area). Changed only through [requestSetup]. */
+    @Volatile var setup: RunSetup = RunSetup.DEFAULT
+        private set
+    private val pendingSetup = AtomicReference<RunSetup?>(null)
+
+    /** The map theme the renderer draws. */
+    val area: GameArea get() = setup.area
+
+    /** True when the last wave of a campaign level has been cleared. */
+    val levelComplete: Boolean get() = waves.levelComplete
+
+    /** Switches to another level or area and starts it from wave 1 on the next tick. Safe to call from any thread. */
+    fun requestSetup(newSetup: RunSetup) = pendingSetup.set(newSetup)
     private val pendingContinue = AtomicReference<ContinueRequest?>(null)
 
     /** A request to start a run at a saved wave instead of wave 1. */
@@ -119,6 +133,8 @@ class GameWorld {
     /** Diamonds collected in this stretch of play. Saved with the run. */
     var diamonds: Int = 0
         private set
+
+    fun addDiamonds(amount: Int) { diamonds += amount }
 
     /** Bosses killed in this stretch of play. */
     var bossKills: Int = 0
@@ -269,9 +285,14 @@ class GameWorld {
             player.applyCharacter(it)
             baseWeaponStats?.let { base -> equipFor(base) } // the new character's magazine and reload bonuses
         }
+        pendingSetup.getAndSet(null)?.let {
+            setup = it
+            waves.configure(it)
+            reset()
+        }
         if (restartRequested.getAndSet(false)) reset()
         pendingContinue.getAndSet(null)?.let { applyContinue(it) }
-        if (gameOver) {
+        if (gameOver || waves.levelComplete) {
             updateEffects(dt) // blood, smoke and stains keep moving behind the game over screen
             publishHud()
             return
@@ -302,7 +323,7 @@ class GameWorld {
         flushDamageNumbers()
         removeFinishedZombies()
 
-        if (!player.alive) {
+        if (!player.alive && !waves.levelComplete) {
             gameOver = true
             player.firing = false
             onPlayerDied()
@@ -1267,7 +1288,8 @@ class GameWorld {
             cur.grenades == grenadeCount && cur.rapidFireSeconds == rapid &&
             cur.damageBoostSeconds == damageBuff && cur.shieldSeconds == shield &&
             cur.bossWave == waves.isBossWave && cur.boss == bossType && cur.bossPercent == bossPercent &&
-            cur.diamonds == diamonds && cur.ability == ability && cur.abilityPercent == abilityPercent
+            cur.diamonds == diamonds && cur.ability == ability && cur.abilityPercent == abilityPercent &&
+            cur.totalWaves == setup.totalWaves && cur.level == levelNumber && cur.levelComplete == waves.levelComplete
         ) return
         hud.value = HudState(
             health = health, maxHealth = maxHealth, poisoned = player.poisoned,
@@ -1278,9 +1300,13 @@ class GameWorld {
             reloading = weapon.reloading, reloadPercent = reloadPercent,
             grenades = grenadeCount, rapidFireSeconds = rapid, damageBoostSeconds = damageBuff,
             shieldSeconds = shield, bossWave = waves.isBossWave, boss = bossType, bossPercent = bossPercent,
-            diamonds = diamonds, ability = ability, abilityPercent = abilityPercent
+            diamonds = diamonds, ability = ability, abilityPercent = abilityPercent,
+            totalWaves = setup.totalWaves, level = levelNumber, levelComplete = waves.levelComplete
         )
     }
+
+    /** Campaign level number for the HUD; 0 in the endless mode. */
+    private val levelNumber: Int get() = if (setup.isCampaign) setup.level else 0
 
     private fun buffSeconds(timer: Float): Int = if (timer > 0f) ceil(timer).toInt() else 0
 }
