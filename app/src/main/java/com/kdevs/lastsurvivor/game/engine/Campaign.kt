@@ -29,6 +29,15 @@ object Campaign {
 
     val count: Int get() = levels.size
 
+    /** The first campaign level played in [area]. */
+    fun firstLevelOf(area: GameArea): Int = levels.first { it.area == area }.number
+
+    /**
+     * Infinite mode in [area] opens up once the campaign has taken the player there, i.e. the area's first
+     * level is unlocked ([unlockedLevel] = highest unlocked level number).
+     */
+    fun isAreaUnlocked(area: GameArea, unlockedLevel: Int): Boolean = firstLevelOf(area) <= unlockedLevel
+
     /** The level with this number; out-of-range numbers are clamped to 1..[count]. */
     fun level(number: Int): CampaignLevel = levels[(number - 1).coerceIn(0, levels.lastIndex)]
 }

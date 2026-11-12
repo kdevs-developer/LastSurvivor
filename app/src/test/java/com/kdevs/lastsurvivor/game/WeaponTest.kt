@@ -76,4 +76,13 @@ class WeaponTest {
         pool.release(a)
         assertSame(a, pool.obtain())
     }
+
+    @Test fun `the armory has the new guns, priced in order and none for free`() {
+        val prices = WeaponType.entries.filter { it != WeaponType.PISTOL }.map { it.price }
+        assertTrue(prices.all { it > 0 })
+        assertTrue(WeaponType.entries.size >= 9)
+        assertTrue(WeaponType.SNIPER.pierce > WeaponType.RIFLE.pierce)
+        assertTrue(WeaponType.MINIGUN.fireInterval < WeaponType.SMG.fireInterval)
+        assertTrue(WeaponType.AUTO_SHOTGUN.pellets >= 4)
+    }
 }

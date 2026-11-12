@@ -157,6 +157,14 @@ fun GameHud(hud: HudState, modifier: Modifier = Modifier) {
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
+                if (hud.collectingLoot) {
+                    Text(
+                        text = stringResource(R.string.hud_collect_diamonds),
+                        color = colorResource(R.color.powerup_diamond),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Black
+                    )
+                }
                 if (hud.boss != null) {
                     BossBar(hud.boss, hud.bossPercent)
                 }

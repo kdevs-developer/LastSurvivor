@@ -65,7 +65,6 @@
     <color name="player_body">#FF2F5A8A</color>
     <color name="player_skin">#FFD9B38C</color>
     <color name="player_hair">#FF3A2A1C</color>
-    <color name="player_aim_laser">#88FF3B30</color>
     <color name="player_muzzle_flash">#FFFFC107</color>
 
     <!-- ===== Zombies (index order matches ZombieType: walker, runner, tank, toxic; Phase 8 bosses are in colors_powerups.xml) ===== -->

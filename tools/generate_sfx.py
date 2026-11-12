@@ -141,19 +141,70 @@ def shot_rifle():
     return crack * 0.9 + thump * 0.9 + echo
 
 
+# Reloads use their own random stream, so changing them never changes any other sound.
+_rr = np.random.default_rng(777)
+
+
+def _rnoise(seconds):
+    return _rr.uniform(-1.0, 1.0, int(SR * seconds))
+
+
+def _metal(seconds, freqs, tau, amp=1.0):
+    """A struck metal part: a few damped, slightly inharmonic partials (the 'tink' of steel on steel)."""
+    t = t_axis(seconds)
+    out = np.zeros_like(t)
+    for i, f in enumerate(freqs):
+        out += np.sin(2 * np.pi * f * t + i) * np.exp(-t / (tau / (1 + 0.6 * i))) / (1 + i)
+    out *= np.minimum(t / 0.0004, 1.0)
+    return out * amp
+
+
+def _tick(seconds=0.02, lo=2500, hi=9000, tau=0.003):
+    return bandpass(_rnoise(seconds), lo, hi) * decay(seconds, tau, 0.0003)
+
+
+def _thud(seconds, freq, tau, amp=1.0):
+    """Muffled knock: a falling low sine plus a soft noise burst (plastic / hand on metal)."""
+    t = t_axis(seconds)
+    body = np.sin(2 * np.pi * np.cumsum(freq * (1.0 - 0.35 * t / seconds)) / SR) * np.exp(-t / tau)
+    soft = lowpass(_rnoise(seconds), 900) * np.exp(-t / (tau * 0.5)) * 0.8
+    return (body + soft) * np.minimum(t / 0.0008, 1.0) * amp
+
+
+def _scrape(seconds, f0, f1, amp=1.0, grit=60.0):
+    """Metal sliding on metal: band-limited noise whose pitch glides, with a fast rough flutter."""
+    t = t_axis(seconds)
+    n = _rnoise(seconds)
+    centre = np.linspace(f0, f1, len(t))
+    # cheap moving band: noise mixed with a carrier at the gliding frequency
+    carrier = np.sin(2 * np.pi * np.cumsum(centre) / SR)
+    sig = highpass(n, 1500) * (0.6 + 0.4 * carrier)
+    flutter = 0.65 + 0.35 * np.sign(np.sin(2 * np.pi * grit * t + 6 * np.sin(2 * np.pi * 7 * t)))
+    env = np.sin(np.pi * np.clip(t / seconds, 0, 1)) ** 0.6
+    return sig * flutter * env * amp
+
+
 def reload_start():
-    d = 0.35
+    """Magazine release: button click, the magazine slides out of the grip, a little rattle as it lands in the hand."""
+    d = 0.55
     return mix(d,
-               (0.0, stack(click(0.05, 1200, 5000, 0.012) * 0.9, tone(0.05, 900, 0.02) * 0.4)),
-               (0.13, click(0.04, 2000, 7000, 0.008) * 0.7),
-               (0.17, tone(0.15, 420, 0.05, (1.0, 0.4)) * 0.3))
+               (0.00, stack(_metal(0.12, (3100, 4700, 6900), 0.020, 0.55), _tick() * 0.7)),   # release catch
+               (0.03, _scrape(0.13, 2500, 1500, 0.22)),                                 # mag sliding down
+               (0.15, _thud(0.12, 210, 0.035, 0.75)),                                   # into the palm
+               (0.24, _metal(0.09, (2300, 3900), 0.012, 0.18)),                         # loose rounds ticking
+               (0.30, _metal(0.08, (2700, 4400), 0.010, 0.12)))
 
 
 def reload_done():
-    d = 0.35
+    """New magazine: slides in, seats with a firm clunk, the slide is pulled back and snaps forward."""
+    d = 0.78
     return mix(d,
-               (0.0, stack(click(0.05, 800, 3500, 0.012) * 0.8, tone(0.1, 250, 0.04) * 0.5)),
-               (0.1, stack(click(0.06, 1500, 6000, 0.01) * 1.0, tone(0.12, 160, 0.05, (1.0, 0.5)) * 0.7)))
+               (0.00, _scrape(0.09, 1400, 2800, 0.20)),                                 # mag entering the well
+               (0.08, stack(_thud(0.14, 150, 0.045, 1.0), _metal(0.10, (2600, 4100), 0.016, 0.45))),  # seated
+               (0.30, _scrape(0.10, 1900, 3200, 0.38, grit=90.0)),                      # slide pulled back
+               (0.31, _metal(0.05, (3300, 5200), 0.008, 0.22)),
+               (0.42, stack(_thud(0.08, 260, 0.02, 0.35), _metal(0.12, (1700, 2900, 4800), 0.030, 0.75))),  # slide snaps forward
+               (0.43, _tick(0.02, 3000, 8500, 0.004) * 0.6))
 
 
 def hit_flesh():
@@ -340,6 +391,56 @@ def wave_start():
     return mix(d, *parts)
 
 
+# The other wave / run start sounds. Each wave starts with a different one so it never gets repetitive.
+def wave_start_2():
+    """A soft low gong: inharmonic partials ringing out under a short swell."""
+    d = 1.3
+    t = t_axis(d)
+    gong = sum(a * np.sin(2 * np.pi * f * t) * np.exp(-t / tau)
+               for f, a, tau in ((110, 1.0, 0.55), (165.5, 0.6, 0.45), (233, 0.45, 0.35), (312, 0.3, 0.25), (448, 0.15, 0.18)))
+    swell = lowpass(_rnoise(d), 700) * np.minimum(t / 0.25, 1.0) * np.exp(-t / 0.35) * 0.6
+    return (gong + swell) * np.minimum(t / 0.01, 1.0)
+
+
+def wave_start_3():
+    """Two falling tones, like a quiet alert."""
+    d = 1.0
+    parts = []
+    for off in (0.0, 0.42):
+        n = int(SR * 0.4)
+        tt = np.arange(n) / SR
+        f = 392 - 110 * tt / 0.4
+        sig = np.sin(2 * np.pi * np.cumsum(f) / SR) + 0.3 * np.sin(2 * np.pi * np.cumsum(f * 2) / SR)
+        parts.append((off, sig * np.minimum(tt / 0.02, 1.0) * np.exp(-tt / 0.22)))
+    return mix(d, *parts)
+
+
+def game_start():
+    """The run begins: a low swell, then a rising four-note chime."""
+    d = 1.6
+    t = t_axis(d)
+    swell = np.sin(2 * np.pi * np.cumsum(np.linspace(80, 150, len(t))) / SR) * np.minimum(t / 0.5, 1.0) * np.exp(-t / 0.9) * 0.7
+    parts = [(0.0, swell)]
+    for i, f in enumerate((220.0, 261.6, 329.6, 440.0)):
+        n = int(SR * 0.9)
+        tt = np.arange(n) / SR
+        bell = (np.sin(2 * np.pi * f * tt) + 0.3 * np.sin(2 * np.pi * f * 2 * tt)) * np.exp(-tt / 0.35) * np.minimum(tt / 0.006, 1.0)
+        parts.append((0.25 + i * 0.2, bell * 0.55))
+    return mix(d, *parts)
+
+
+def thunder():
+    """A sharp crack, then a long rolling rumble that swells and fades unevenly."""
+    d = 3.4
+    t = t_axis(d)
+    crack = highpass(_rnoise(d), 800) * np.exp(-t / 0.05) * np.minimum(t / 0.001, 1.0) * 0.8
+    rumble = lowpass(_rnoise(d), 160 + 120 * np.exp(-t / 0.6))
+    roll = 0.55 + 0.45 * np.sin(2 * np.pi * 1.3 * t + 2.0 * np.sin(2 * np.pi * 0.37 * t))
+    env = np.minimum(t / 0.12, 1.0) * np.exp(-t / 1.15) * roll
+    boom = np.sin(2 * np.pi * np.cumsum(55 * np.exp(-t / 2.0) + 28) / SR) * np.exp(-t / 0.6) * 0.5
+    return crack + rumble * env * 5.0 + boom
+
+
 def wave_clear():
     d = 1.0
     parts = []
@@ -386,7 +487,8 @@ SOUNDS = {
     "grenade_throw": grenade_throw, "explosion": explosion,
     "boss_roar": boss_roar, "boss_windup": boss_windup, "boss_charge": boss_charge,
     "boss_summon": boss_summon, "boss_death": boss_death,
-    "wave_start": wave_start, "wave_clear": wave_clear, "game_over": game_over,
+    "wave_start": wave_start, "wave_start_2": wave_start_2, "wave_start_3": wave_start_3, "game_start": game_start, "thunder": thunder,
+    "wave_clear": wave_clear, "game_over": game_over,
     "ui_click": ui_click, "ui_purchase": ui_purchase, "ui_denied": ui_denied,
 }
 
@@ -402,16 +504,20 @@ def write_wav(path, x):
 
 
 def main():
+    import sys
+    only = sys.argv[1:]  # optional: regenerate just these sounds, e.g. `generate_sfx.py reload_start reload_done`
     os.makedirs(OUT, exist_ok=True)
     total = 0
     for name, fn in SOUNDS.items():
+        if only and name not in only:
+            continue
         sig = finish(fn())
         path = os.path.join(OUT, f"sfx_{name}.wav")
         write_wav(path, sig)
         size = os.path.getsize(path)
         total += size
         print(f"sfx_{name}.wav  {len(sig) / SR:4.2f}s  {size / 1024:5.1f} KB")
-    print(f"{len(SOUNDS)} files, {total / 1024:.0f} KB total")
+    print(f"{len(only) or len(SOUNDS)} files, {total / 1024:.0f} KB total")
 
 
 if __name__ == "__main__":

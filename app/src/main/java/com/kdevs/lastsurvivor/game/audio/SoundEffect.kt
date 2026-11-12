@@ -56,7 +56,11 @@ enum class SoundEffect(
     BOSS_DEATH(1.00f, priority = 5),
 
     // ---- waves and game flow ----
-    WAVE_START(0.75f, priority = 4),
+    WAVE_START(0.55f, priority = 4),
+    WAVE_START_2(0.55f, priority = 4),
+    WAVE_START_3(0.50f, priority = 4),
+    GAME_START(0.60f, priority = 4),
+    THUNDER(0.70f, minIntervalMs = 2000, pitchJitter = 0.06f, priority = 3),
     WAVE_CLEAR(0.75f, priority = 4),
     GAME_OVER(0.90f, priority = 5),
 
@@ -71,7 +75,10 @@ enum class SoundEffect(
             WeaponType.PISTOL -> SHOT_PISTOL
             WeaponType.SMG -> SHOT_SMG
             WeaponType.SHOTGUN -> SHOT_SHOTGUN
-            WeaponType.RIFLE -> SHOT_RIFLE
+            WeaponType.RIFLE, WeaponType.SNIPER -> SHOT_RIFLE
+            WeaponType.REVOLVER -> SHOT_PISTOL
+            WeaponType.ASSAULT, WeaponType.MINIGUN -> SHOT_SMG
+            WeaponType.AUTO_SHOTGUN -> SHOT_SHOTGUN
         }
     }
 }

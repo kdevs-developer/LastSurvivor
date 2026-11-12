@@ -5,6 +5,7 @@ import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.GameWorld
 import com.kdevs.lastsurvivor.game.engine.HazardKind
 import com.kdevs.lastsurvivor.game.engine.MapLayout
+import com.kdevs.lastsurvivor.game.engine.Obstacle
 import com.kdevs.lastsurvivor.game.engine.ObstacleKind
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -80,5 +81,38 @@ class MapLayoutTest {
         map.restore()
         assertTrue(barrel.active)
         assertEquals(GameConfig.BARREL_HEALTH, barrel.health, 0.0001f)
+    }
+
+    @Test fun `a walker heading straight at a prop turns to go round it and gets past`() {
+        val map = MapLayout()
+        val o = Obstacle(1000f, 1000f, 50f, ObstacleKind.BOULDER, 0f, 0)
+        map.obstacles.add(o)
+        // stand left of the prop, aim at its centre
+        var x = o.x - o.radius - 120f
+        var y = o.y + 0.5f
+        val radius = 20f
+        val side = map.steer(x, y, radius, 1f, 0f, GameConfig.ZOMBIE_STEER_LOOKAHEAD, 0)
+        assertTrue(side != 0)
+        assertTrue(kotlin.math.abs(map.steerY) > 0.2f) // no longer straight into the prop
+
+        // walk with the same rule as Zombie.chase until we are on the far side
+        var committed = side
+        var steps = 0
+        while (x < o.x + o.radius + 60f && steps < 4000) {
+            var mx = 1f
+            var my = 0f
+            val s = map.steer(x, y, radius, mx, my, GameConfig.ZOMBIE_STEER_LOOKAHEAD, committed)
+            if (s != 0) { committed = s; mx = map.steerX; my = map.steerY }
+            x += mx * 4f
+            y += my * 4f
+            if (map.resolve(x, y, radius)) { x = map.pushX; y = map.pushY }
+            steps++
+        }
+        assertTrue("walker never got round the prop", x >= o.x + o.radius + 60f)
+    }
+
+    @Test fun `an open path is not steered`() {
+        val map = layout(GameArea.CITY)
+        assertEquals(0, map.steer(1f, 1f, 20f, 0f, -1f, GameConfig.ZOMBIE_STEER_LOOKAHEAD, 0))
     }
 }

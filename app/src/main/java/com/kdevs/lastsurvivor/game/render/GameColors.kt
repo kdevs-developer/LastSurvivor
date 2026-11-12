@@ -57,7 +57,6 @@ class GameColors(context: Context) {
     val playerBody = c(R.color.player_body)
     val playerSkin = c(R.color.player_skin)
     val playerHair = c(R.color.player_hair)
-    val aimLaser = c(R.color.player_aim_laser)
     val muzzleFlash = c(R.color.player_muzzle_flash)
 
     // zombies, indexed by ZombieType.ordinal: WALKER, RUNNER, TANK, TOXIC, BRUTE, MOTHER

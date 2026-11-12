@@ -886,6 +886,18 @@ class GameWorld {
         }
     }
 
+    /** Diamonds still lying on the ground (the level waits for these after the last boss). */
+    fun diamondsOnGround(): Int {
+        var n = 0
+        var i = 0
+        while (i < powerUps.size) {
+            val u = powerUps[i]
+            if (u.active && u.type == PowerUpType.DIAMOND) n++
+            i++
+        }
+        return n
+    }
+
     private fun dropPowerUp(type: PowerUpType, x: Float, y: Float) {
         val u = powerUpPool.obtain()
         u.spawn(type, x.coerceIn(u.radius, WIDTH - u.radius), y.coerceIn(u.radius, HEIGHT - u.radius))
@@ -954,7 +966,7 @@ class GameWorld {
                 if (z.isBoss) foundBoss = z
                 val startX = z.x
                 val startY = z.y
-                if (z.chase(dt, player)) hitPlayer(z)
+                if (z.chase(dt, player, map)) hitPlayer(z)
                 applyTerrain(z, startX, startY)
                 if (z.isBoss) bossCues(z)
                 if (z.summonReady) {
@@ -1109,6 +1121,7 @@ class GameWorld {
 
     /** Background atmosphere: distant groans while zombies are around, a heartbeat at low health. */
     private fun updateAmbience(dt: Float) {
+        if (area == GameArea.GRAVEYARD) updateThunder()
         groanTimer -= dt
         if (groanTimer <= 0f) {
             val base = GameConfig.GROAN_MIN_INTERVAL +
@@ -1127,6 +1140,21 @@ class GameWorld {
             }
         } else {
             heartbeatTimer = 0f
+        }
+    }
+
+    private var lastThunderCycle = -1
+
+    /**
+     * The graveyard's lightning flashes at the start of every 10 second cycle (see AtmosphereRenderer). Sound is
+     * slower than light, so the thunder rolls in a moment after the flash.
+     */
+    private fun updateThunder() {
+        val cycle = (time / GameConfig.LIGHTNING_PERIOD).toInt()
+        val phase = time - cycle * GameConfig.LIGHTNING_PERIOD
+        if (phase >= GameConfig.THUNDER_DELAY && phase < GameConfig.THUNDER_DELAY + 1f && cycle != lastThunderCycle) {
+            lastThunderCycle = cycle
+            playSound(SoundEffect.THUNDER)
         }
     }
 
@@ -1374,7 +1402,8 @@ class GameWorld {
             cur.damageBoostSeconds == damageBuff && cur.shieldSeconds == shield &&
             cur.bossWave == waves.isBossWave && cur.boss == bossType && cur.bossPercent == bossPercent &&
             cur.diamonds == diamonds && cur.ability == ability && cur.abilityPercent == abilityPercent &&
-            cur.totalWaves == setup.totalWaves && cur.level == levelNumber && cur.levelComplete == waves.levelComplete
+            cur.totalWaves == setup.totalWaves && cur.level == levelNumber && cur.levelComplete == waves.levelComplete &&
+            cur.collectingLoot == waves.collectingLoot
         ) return
         hud.value = HudState(
             health = health, maxHealth = maxHealth, poisoned = player.poisoned,
@@ -1386,7 +1415,8 @@ class GameWorld {
             grenades = grenadeCount, rapidFireSeconds = rapid, damageBoostSeconds = damageBuff,
             shieldSeconds = shield, bossWave = waves.isBossWave, boss = bossType, bossPercent = bossPercent,
             diamonds = diamonds, ability = ability, abilityPercent = abilityPercent,
-            totalWaves = setup.totalWaves, level = levelNumber, levelComplete = waves.levelComplete
+            totalWaves = setup.totalWaves, level = levelNumber, levelComplete = waves.levelComplete,
+            collectingLoot = waves.collectingLoot
         )
     }
 

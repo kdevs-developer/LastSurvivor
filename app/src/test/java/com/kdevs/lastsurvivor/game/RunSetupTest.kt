@@ -7,6 +7,7 @@ import com.kdevs.lastsurvivor.game.engine.GameMode
 import com.kdevs.lastsurvivor.game.engine.RunSetup
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -62,5 +63,14 @@ class RunSetupTest {
     @Test fun `a v2 checkpoint with a bad setup is rejected`() {
         assertNull(RunCheckpoint.decode("v2|3|50|2|Q9"))
         assertNull(RunCheckpoint.decode("v2|3|50|2"))
+    }
+
+    @Test fun `an infinite area opens when the campaign reaches it`() {
+        assertTrue(Campaign.isAreaUnlocked(GameArea.CITY, 1))
+        assertFalse(Campaign.isAreaUnlocked(GameArea.SWAMP, 2))
+        assertTrue(Campaign.isAreaUnlocked(GameArea.SWAMP, 3))
+        assertFalse(Campaign.isAreaUnlocked(GameArea.GRAVEYARD, 8))
+        assertTrue(Campaign.isAreaUnlocked(GameArea.GRAVEYARD, 9))
+        for (area in GameArea.entries) assertTrue(Campaign.isAreaUnlocked(area, Campaign.count))
     }
 }

@@ -65,10 +65,6 @@ class GameRenderer(context: Context) {
         textSize = 28f
     }
     private val pauseDim = Paint().apply { color = colors.pauseDim }
-    private val aimPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = colors.aimLaser
-        strokeWidth = 3f
-    }
     private val firePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.muzzleFlash }
     private val debugPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = colors.hudDebugText
@@ -269,13 +265,6 @@ class GameRenderer(context: Context) {
 
         val cosR = cos(p.rotation)
         val sinR = sin(p.rotation)
-        // aim laser from the muzzle while the aim stick is held
-        if (p.aiming) {
-            canvas.drawLine(
-                p.x + cosR * 40f, p.y + sinR * 40f,
-                p.x + cosR * 420f, p.y + sinR * 420f, aimPaint
-            )
-        }
         // muzzle flash for a few frames after each real shot: a warm glow, a flame and a white core
         if (p.muzzleFlash > 0f) {
             val k = (p.muzzleFlash / GameConfig.MUZZLE_FLASH_SECONDS).coerceIn(0f, 1f)

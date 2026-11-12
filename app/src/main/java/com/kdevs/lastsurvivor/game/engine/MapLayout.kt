@@ -152,6 +152,66 @@ class MapLayout {
         return moved
     }
 
+    /** Walking direction chosen by the last [steer] call that returned non-zero. */
+    var steerX: Float = 0f
+        private set
+    var steerY: Float = 0f
+        private set
+
+    /**
+     * Obstacle avoidance for a walker at ([x],[y]) heading along the unit vector ([dirX],[dirY]).
+     * Looks [lookAhead] units ahead for the nearest solid prop in the way. If there is one, the walker
+     * turns towards the tangent so it goes round the prop instead of pushing against it; the result is in
+     * [steerX]/[steerY] and the return value is the side taken (+1 or -1), to be passed back in as [side] on
+     * the next call so the walker commits to one side instead of dithering. Returns 0 (and leaves
+     * [steerX]/[steerY] alone) when the way is clear.
+     */
+    fun steer(x: Float, y: Float, radius: Float, dirX: Float, dirY: Float, lookAhead: Float, side: Int): Int {
+        var bestT = Float.MAX_VALUE
+        var bx = 0f
+        var by = 0f
+        var bClear = 0f
+        var i = 0
+        while (i < obstacles.size) {
+            val o = obstacles[i]
+            i++
+            if (!o.active) continue
+            val ox = o.x - x
+            val oy = o.y - y
+            val clear = o.radius + radius + GameConfig.ZOMBIE_STEER_MARGIN
+            if (ox > lookAhead + clear || ox < -lookAhead - clear || oy > lookAhead + clear || oy < -lookAhead - clear) continue
+            val t = ox * dirX + oy * dirY                 // how far ahead the prop's centre is
+            if (t < -clear * 0.3f || t > lookAhead + clear) continue
+            val lateral = ox * dirY - oy * dirX
+            if (lateral > clear || lateral < -clear) continue
+            if (t < bestT) {
+                bestT = t; bx = ox; by = oy; bClear = clear
+            }
+        }
+        if (bestT == Float.MAX_VALUE) return 0
+        val d = sqrt(bx * bx + by * by)
+        if (d < 0.001f) return 0
+        // the two tangents are the prop's direction turned a quarter turn either way
+        val px = -by / d
+        val py = bx / d
+        var s = side
+        if (s == 0) {
+            val dot = px * dirX + py * dirY
+            s = if (dot > 0.05f) 1 else if (dot < -0.05f) -1 else if (((x * 0.37f + y * 0.11f).toInt() and 1) == 0) 1 else -1
+        }
+        val tx = px * s
+        val ty = py * s
+        // the closer the prop, the harder the turn
+        val w = (1f - (bestT.coerceAtLeast(0f)) / (lookAhead + bClear)).coerceIn(0.4f, 1f)
+        var ox = dirX * (1f - w) + tx * w
+        var oy = dirY * (1f - w) + ty * w
+        val len = sqrt(ox * ox + oy * oy)
+        if (len < 0.001f) { ox = tx; oy = ty } else { ox /= len; oy /= len }
+        steerX = ox
+        steerY = oy
+        return s
+    }
+
     // ------------------------------------------------------------------ placement helpers
 
     /** Adds a solid prop if it is clear of the player's start and keeps [gap] to every other prop. */

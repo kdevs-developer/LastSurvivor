@@ -1,6 +1,11 @@
 package com.kdevs.lastsurvivor.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.kdevs.lastsurvivor.game.audio.MusicManager
+import com.kdevs.lastsurvivor.game.audio.MusicTrack
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -35,6 +40,14 @@ object Routes {
 fun AppNavigation() {
     val nav = rememberNavController()
     val back: () -> Unit = { nav.popBackStack() }
+
+    // Menu music on every screen except the game, where GameScreen plays the track of the area being played.
+    // Asking for the track that is already playing does nothing, so moving between menus does not restart it.
+    val context = LocalContext.current
+    val route = nav.currentBackStackEntryAsState().value?.destination?.route
+    LaunchedEffect(route) {
+        if (route != null && route != Routes.GAME) MusicManager.get(context).play(MusicTrack.MENU)
+    }
 
     NavHost(navController = nav, startDestination = Routes.MENU) {
         composable(Routes.MENU) {

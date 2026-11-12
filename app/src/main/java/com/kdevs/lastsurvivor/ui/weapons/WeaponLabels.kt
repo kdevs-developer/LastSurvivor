@@ -12,6 +12,11 @@ fun WeaponType.nameRes(): Int = when (this) {
     WeaponType.SMG -> R.string.weapon_smg
     WeaponType.SHOTGUN -> R.string.weapon_shotgun
     WeaponType.RIFLE -> R.string.weapon_rifle
+    WeaponType.REVOLVER -> R.string.weapon_revolver
+    WeaponType.ASSAULT -> R.string.weapon_assault
+    WeaponType.AUTO_SHOTGUN -> R.string.weapon_auto_shotgun
+    WeaponType.SNIPER -> R.string.weapon_sniper
+    WeaponType.MINIGUN -> R.string.weapon_minigun
 }
 
 @StringRes
@@ -20,6 +25,11 @@ fun WeaponType.descriptionRes(): Int = when (this) {
     WeaponType.SMG -> R.string.weapon_smg_desc
     WeaponType.SHOTGUN -> R.string.weapon_shotgun_desc
     WeaponType.RIFLE -> R.string.weapon_rifle_desc
+    WeaponType.REVOLVER -> R.string.weapon_revolver_desc
+    WeaponType.ASSAULT -> R.string.weapon_assault_desc
+    WeaponType.AUTO_SHOTGUN -> R.string.weapon_auto_shotgun_desc
+    WeaponType.SNIPER -> R.string.weapon_sniper_desc
+    WeaponType.MINIGUN -> R.string.weapon_minigun_desc
 }
 
 @StringRes

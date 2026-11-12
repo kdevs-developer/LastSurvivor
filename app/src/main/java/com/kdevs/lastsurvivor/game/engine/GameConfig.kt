@@ -116,9 +116,28 @@ object GameConfig {
     const val BOSS_SUMMON_COUNT = 3
     const val BOSS_SUMMON_ALIVE_LIMIT = 45
 
+    // ---- Graveyard lightning ----
+    /** A lightning flash every this many seconds; the thunder follows THUNDER_DELAY seconds after it. */
+    const val LIGHTNING_PERIOD = 10f
+    const val THUNDER_DELAY = 0.9f
+
+    // ---- Music ----
+    /** Background music volume (0..1). Kept low so it stays mild under the effects. */
+    const val MUSIC_VOLUME = 0.22f
+
+    // ---- Zombie pathing: how they walk around props ----
+    /** How far ahead (world units) a zombie looks for a prop in its way. */
+    const val ZOMBIE_STEER_LOOKAHEAD = 170f
+    /** Extra clearance kept from a prop's edge while walking around it. */
+    const val ZOMBIE_STEER_MARGIN = 10f
+    /** A zombie keeps going round the same side of a prop for this long after it was last blocked. */
+    const val ZOMBIE_STEER_MEMORY = 0.7f
+
     // ---- Characters and diamonds ----
     /** A diamond pickup stays on the ground this long (longer than other pickups: they are precious). */
     const val DIAMOND_LIFETIME = 20f
+    /** After the last boss dies the level waits at least this long (and until the diamonds are gone) before ending. */
+    const val LOOT_MIN_SECONDS = 1.5f
     /** Bosses drop this many diamonds. */
     const val BOSS_DIAMOND_DROPS = 5
     /** Extra diamonds for clearing a boss wave are the drops above; normal zombies use ZombieType.diamondChance. */
