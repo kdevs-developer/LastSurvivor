@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Zombie head -->
+    <path
+        android:fillColor="#0B0B0D"
+        android:pathData="M42,51a12,12 0 1,0 24,0a12,12 0 1,0 -24,0" />
+    <path
+        android:fillColor="#0B0B0D"
+        android:pathData="M50.5,58H57.5A2.5,2.5 0 0 1 60,60.5V64.5A2.5,2.5 0 0 1 57.5,67H50.5A2.5,2.5 0 0 1 48,64.5V60.5A2.5,2.5 0 0 1 50.5,58Z" />
+    <path
+        android:fillColor="#7CB342"
+        android:pathData="M46.5,50.5a3,3 0 1,0 6,0a3,3 0 1,0 -6,0M55.5,50.5a3,3 0 1,0 6,0a3,3 0 1,0 -6,0" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,54.5L52.4,57.5L55.6,57.5Z" />
+    <path
+        android:pathData="M51,61.5V65.5M54,61.5V65.5M57,61.5V65.5"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1"
+        android:strokeLineCap="round" />
+    <path
+        android:fillColor="#C62828"
+        android:pathData="M54,67.5L52.3,69.8A1.8,1.8 0 1 0 55.7,69.8Z" />
+
+    <!-- Crosshair (spins in on the splash) -->
+    <group
+        android:name="rg"
+        android:pivotX="54"
+        android:pivotY="54">
+        <path
+            android:pathData="M27,54a27,27 0 1,0 54,0a27,27 0 1,0 -54,0"
+            android:strokeColor="#0B0B0D"
+            android:strokeWidth="3.5" />
+        <path
+            android:pathData="M34.91,34.91A27,27 0 0 1 72.76,34.58"
+            android:strokeColor="#C62828"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round" />
+        <path
+            android:pathData="M54,18V24M54,84V90M18,54H24M84,54H90"
+            android:strokeColor="#0B0B0D"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round" />
+    </group>
+</vector>
