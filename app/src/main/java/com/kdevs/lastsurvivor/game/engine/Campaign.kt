@@ -49,6 +49,9 @@ data class RunSetup(val mode: GameMode, val level: Int, val infiniteArea: GameAr
     /** Waves in the level; 0 means endless. */
     val totalWaves: Int get() = levelData?.waves ?: 0
 
+    /** Makes every campaign level (and every infinite area) a different arrangement of props. */
+    val layoutSeed: Int get() = if (isCampaign) 1000 + level * 37 else 7 + infiniteArea.ordinal * 101
+
     /** "C3" for campaign level 3, "I-SWAMP" for infinite in the swamp. No "|" and no "/", so it fits in a route and a checkpoint. */
     fun encode(): String = if (isCampaign) "C$level" else "I-${infiniteArea.name}"
 

@@ -7,6 +7,7 @@ import com.kdevs.lastsurvivor.game.effects.FloatingTexts
 import com.kdevs.lastsurvivor.game.effects.ParticleSystem
 import com.kdevs.lastsurvivor.game.entities.AbilityType
 import com.kdevs.lastsurvivor.game.entities.Bullet
+import com.kdevs.lastsurvivor.game.entities.Entity
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.game.entities.ExplosionEffect
 import com.kdevs.lastsurvivor.game.entities.Grenade
@@ -91,6 +92,9 @@ class GameWorld {
     @Volatile var setup: RunSetup = RunSetup.DEFAULT
         private set
     private val pendingSetup = AtomicReference<RunSetup?>(null)
+
+    /** Obstacles and hazards of the current map; rebuilt whenever the level or area changes. */
+    val map = MapLayout().also { it.build(RunSetup.DEFAULT.area, RunSetup.DEFAULT.layoutSeed) }
 
     /** The map theme the renderer draws. */
     val area: GameArea get() = setup.area
@@ -257,6 +261,7 @@ class GameWorld {
         heartbeatTimer = 0f
         wasReloading = false
 
+        map.restore()
         player.reset(WIDTH / 2f, HEIGHT / 2f)
         waves.reset()
         aliveZombies = 0
@@ -288,6 +293,7 @@ class GameWorld {
         pendingSetup.getAndSet(null)?.let {
             setup = it
             waves.configure(it)
+            map.build(it.area, it.layoutSeed)
             reset()
         }
         if (restartRequested.getAndSet(false)) reset()
@@ -301,9 +307,13 @@ class GameWorld {
         runSeconds += dt
         if (abilityCooldown > 0f) abilityCooldown = max(0f, abilityCooldown - dt)
         applyInput()
+        val startX = player.x
+        val startY = player.y
         player.update(dt)
+        applyTerrain(player, startX, startY)
         player.x = player.x.coerceIn(player.radius, WIDTH - player.radius)
         player.y = player.y.coerceIn(player.radius, HEIGHT - player.radius)
+        updatePoisonPools()
 
         updateShooting(dt)
         updateTurrets(dt)
@@ -385,7 +395,7 @@ class GameWorld {
                     spawnImpact(hx, hy, onZombie = false)
                     wallHitEffects(hx, hy, b.dirX, b.dirY)
                     b.active = false
-                } else {
+                } else if (!hitObstacle(b)) {
                     hitFirstZombie(b)
                 }
             }
@@ -398,6 +408,45 @@ class GameWorld {
                 bulletPool.release(b)
             }
         }
+    }
+
+    /** Stops the bullet at the first obstacle its path touched; a barrel takes the damage and may blow up. */
+    private fun hitObstacle(b: Bullet): Boolean {
+        var best: Obstacle? = null
+        var bestT = 2f
+        val list = map.obstacles
+        var i = 0
+        while (i < list.size) {
+            val o = list[i]
+            i++
+            if (!o.active || !o.kind.blocksBullets) continue
+            val reach = o.radius + 70f // cheap reject before the exact test
+            if (b.x - o.x > reach || b.x - o.x < -reach || b.y - o.y > reach || b.y - o.y < -reach) continue
+            val t = Collision.segmentHitsCircle(b.prevX, b.prevY, b.x, b.y, o.x, o.y, o.radius)
+            if (t >= 0f && t < bestT) {
+                bestT = t
+                best = o
+            }
+        }
+        val o = best ?: return false
+        val hx = b.prevX + (b.x - b.prevX) * bestT
+        val hy = b.prevY + (b.y - b.prevY) * bestT
+        spawnImpact(hx, hy, onZombie = false)
+        wallHitEffects(hx, hy, b.dirX, b.dirY)
+        b.active = false
+        if (o.kind == ObstacleKind.BARREL) {
+            o.health -= b.damage
+            if (o.health <= 0f) detonateBarrel(o)
+        }
+        return true
+    }
+
+    /** A barrel blows up like a grenade (it hurts zombies, not the player) and sets off barrels next to it. */
+    private fun detonateBarrel(o: Obstacle) {
+        if (!o.active) return
+        o.active = false
+        explode(o.x, o.y)
+        addShake(0.35f)
     }
 
     /** Applies the bullet to the first not-yet-hit zombie its path touched this tick. */
@@ -725,6 +774,18 @@ class GameWorld {
         explosions.add(e)
         explosionEffects(cx, cy)
 
+        // chain reaction: barrels inside the blast go off too (a barrel is inactive before it explodes, so this ends)
+        var k = 0
+        while (k < map.obstacles.size) {
+            val o = map.obstacles[k]
+            k++
+            if (!o.active || o.kind != ObstacleKind.BARREL) continue
+            val bx = o.x - cx
+            val by = o.y - cy
+            val reach = GameConfig.GRENADE_BLAST_RADIUS + o.radius
+            if (bx * bx + by * by <= reach * reach) detonateBarrel(o)
+        }
+
         var i = 0
         while (i < zombies.size) {
             val z = zombies[i]
@@ -747,6 +808,27 @@ class GameWorld {
                 z.y += dy / d * push
             }
         }
+    }
+
+    /** Quicksand and snow slow whoever stands in them; solid props push everything out of their way. */
+    private fun applyTerrain(e: Entity, startX: Float, startY: Float) {
+        val slow = map.slowFactorAt(startX, startY)
+        if (slow < 1f) {
+            e.x = startX + (e.x - startX) * slow
+            e.y = startY + (e.y - startY) * slow
+        }
+        if (map.resolve(e.x, e.y, e.radius)) {
+            e.x = map.pushX
+            e.y = map.pushY
+        }
+    }
+
+    /** Standing in a poison pool keeps the player poisoned (like a Toxic zombie's hit, but it never stops while you stay). */
+    private fun updatePoisonPools() {
+        if (!player.alive || !map.inPoisonAt(player.x, player.y)) return
+        val was = player.poisoned
+        player.poison(GameConfig.POISON_POOL_DPS, GameConfig.POISON_POOL_SECONDS)
+        if (!was) playSound(SoundEffect.POISONED)
     }
 
     private fun updateExplosions(dt: Float) {
@@ -870,7 +952,10 @@ class GameWorld {
             if (z.alive) {
                 alive++
                 if (z.isBoss) foundBoss = z
+                val startX = z.x
+                val startY = z.y
                 if (z.chase(dt, player)) hitPlayer(z)
+                applyTerrain(z, startX, startY)
                 if (z.isBoss) bossCues(z)
                 if (z.summonReady) {
                     z.summonReady = false

@@ -124,16 +124,16 @@ fun ModeSelectScreen(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
                         text = when {
-                            tab == TAB_INFINITE -> stringResource(R.string.mode_infinite_info_format, stringResource(area.nameRes))
+                            tab == TAB_INFINITE -> stringResource(R.string.mode_infinite_info_format, stringResource(area.nameRes)) + "\n" + stringResource(area.featureRes)
                             locked -> stringResource(R.string.mode_level_locked_format, level, level - 1)
                             else -> {
                                 val data = Campaign.level(level)
-                                stringResource(R.string.mode_level_info_format, level, stringResource(data.area.nameRes), data.waves)
+                                stringResource(R.string.mode_level_info_format, level, stringResource(data.area.nameRes), data.waves) + "\n" + stringResource(data.area.featureRes)
                             }
                         },
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = colorResource(R.color.neon_label),
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f)
                     )
@@ -337,8 +337,16 @@ private fun AreaCard(area: GameArea, selected: Boolean, modifier: Modifier = Mod
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Bold,
             color = if (selected) accent else colorResource(R.color.neon_title),
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            stringResource(area.featureRes),
+            style = MaterialTheme.typography.labelSmall,
+            color = colorResource(R.color.neon_label),
+            maxLines = 4,
+            overflow = TextOverflow.Ellipsis,
+            lineHeight = 13.sp
         )
     }
 }

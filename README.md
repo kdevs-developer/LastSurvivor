@@ -47,15 +47,15 @@ Endless waves with a boss every 5th wave, in the area you pick. You play until y
 
 ### Areas
 
-Areas change the look only: the floor, the map border and the decoration. Gameplay is the same everywhere.
+Each area is a different map, not just a different colour. It has its own obstacles and hazards, its own weather and its own visibility. Obstacles stop you and the zombies, and they stop most bullets too, so you can use them as cover. Every campaign level (and every Infinite area) lays its props out differently.
 
-| Area | Look |
-| ---- | ---- |
-| Ruined City | Cracked grey asphalt with a red border |
-| Toxic Swamp | Murky green ground with a toxic green border |
-| Dust Wasteland | Sandy brown ground with an orange border |
-| Frozen Tundra | Cold blue-grey ground with an icy blue border |
-| Haunted Graveyard | Dark purple ground with a violet border |
+| Area | Obstacles and hazards | Weather and visibility |
+| ---- | --------------------- | ---------------------- |
+| Ruined City | Wrecked cars and concrete roadblocks for cover. **Explosive barrels:** shoot one and it blows up like a grenade, setting off the barrels next to it | Rain |
+| Toxic Swamp | Dense forest and rocks, so you have to weave between trees. **Poison pools:** standing in one keeps you poisoned | Drifting spores, green haze, dim edges |
+| Dust Wasteland | Boulders and cacti on open ground. **Quicksand:** slows you and the zombies by half | Dust storm that gusts |
+| Frozen Tundra | Ice rocks and pines. **Deep snow drifts:** slow you and the zombies by half | Snowfall and a blizzard haze that gusts |
+| Haunted Graveyard | Rows of tombstones with aisles, crypts and dead trees | **Near darkness:** you only see around you by a flickering light, plus fog and lightning flashes |
 
 ---
 

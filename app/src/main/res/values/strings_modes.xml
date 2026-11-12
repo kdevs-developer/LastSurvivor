@@ -20,6 +20,13 @@
     <string name="area_tundra">Frozen Tundra</string>
     <string name="area_graveyard">Haunted Graveyard</string>
 
+    <!-- What makes each area play differently (shown on the mode select screen) -->
+    <string name="area_city_feature">Cover from wrecked cars. Shoot the explosive barrels. Rain.</string>
+    <string name="area_swamp_feature">Dense trees. Poison pools hurt you. Spores and haze.</string>
+    <string name="area_desert_feature">Boulders and cacti. Quicksand slows everyone. Dust storm.</string>
+    <string name="area_tundra_feature">Ice rocks and pines. Snow drifts slow everyone. Blizzard.</string>
+    <string name="area_graveyard_feature">Rows of tombstones and crypts. Near darkness, fog and lightning.</string>
+
     <string name="hud_level_wave_format">LVL %1$d  \u2022  WAVE %2$d/%3$d</string>
 
     <string name="level_complete_title">LEVEL COMPLETE</string>

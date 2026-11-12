@@ -48,6 +48,15 @@ object GameConfig {
     /** Coins awarded for clearing a wave: this times the wave number. */
     const val WAVE_CLEAR_COINS_PER_WAVE = 5
 
+    // ---- Area terrain (MapLayout) ----
+    /** Movement factor inside quicksand and snow drifts, for the player and the zombies. */
+    const val SLOW_ZONE_FACTOR = 0.5f
+    /** Poison pools: damage per second and how long the poison lasts after stepping out. */
+    const val POISON_POOL_DPS = 4f
+    const val POISON_POOL_SECONDS = 1.2f
+    /** Explosive barrels (Ruined City): damage a barrel takes before it blows up. */
+    const val BARREL_HEALTH = 40f
+
     // ---- Campaign levels ----
     /** Each campaign level starts this many "waves" tougher than the one before (count, health, speed, zombie types). */
     const val CAMPAIGN_OFFSET_PER_LEVEL = 2

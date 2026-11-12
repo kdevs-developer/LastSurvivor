@@ -50,6 +50,10 @@ class GameRenderer(context: Context) {
         shader = BitmapShader(sprites.floorTile, Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
     }
     private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+
+    /** Obstacles and hazards of the map, and the weather and darkness over it. */
+    private val props = PropRenderer(colors)
+    private val atmosphere = AtmosphereRenderer(colors)
     private val shadowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = colors.shadow }
     private val boundsPaint = Paint().apply {
         color = colors.border
@@ -200,6 +204,8 @@ class GameRenderer(context: Context) {
         drawDecor(canvas, world)
         drawDecals(canvas, world)
         canvas.drawRect(0f, 0f, GameWorld.WIDTH, GameWorld.HEIGHT, boundsPaint)
+        props.drawHazards(canvas, world)   // quicksand, snow drifts, poison pools lie on the floor
+        props.drawObstacles(canvas, world) // cars, trees, rocks, tombstones...
 
         drawPowerUps(canvas, world)
         drawBossWarnings(canvas, world)
@@ -216,6 +222,7 @@ class GameRenderer(context: Context) {
 
         canvas.restore()
 
+        atmosphere.draw(canvas, world)     // rain, snow, dust, fog, darkness, lightning (screen space)
         drawVignette(canvas, world)
         drawDamageFeedback(canvas, world)
         if (world.settings.showFps) drawDebugOverlay(canvas, world, fps)
