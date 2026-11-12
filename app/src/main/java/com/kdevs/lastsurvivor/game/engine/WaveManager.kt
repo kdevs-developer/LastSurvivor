@@ -35,6 +35,15 @@ class WaveManager(private val world: GameWorld) {
     var levelComplete: Boolean = false
         private set
 
+    /**
+     * True between the last wave being cleared and the level ending: the boss's diamonds (and any other
+     * diamonds on the ground) can still be picked up. The level completes once they are all collected
+     * or have expired.
+     */
+    var collectingLoot: Boolean = false
+        private set
+    private var lootTimer = 0f
+
     /** Campaign levels start tougher; this shifts the wave number used for count, health, speed and zombie types. */
     private val offset: Int get() = setup.levelData?.difficultyOffset ?: 0
     private fun scaled(w: Int): Int = w + offset
@@ -63,6 +72,8 @@ class WaveManager(private val world: GameWorld) {
         countdown = GameConfig.FIRST_WAVE_COUNTDOWN
         clearedBonus = 0
         levelComplete = false
+        collectingLoot = false
+        lootTimer = 0f
         toSpawn = 0
         spawnTimer = 0f
     }
@@ -76,6 +87,16 @@ class WaveManager(private val world: GameWorld) {
 
     fun update(dt: Float) {
         if (levelComplete) return
+        if (collectingLoot) {
+            lootTimer += dt
+            val settled = lootTimer >= GameConfig.LOOT_MIN_SECONDS && world.diamondsOnGround() == 0
+            // Diamonds expire after DIAMOND_LIFETIME, so this always ends; the cap is only a safety net.
+            if (settled || lootTimer >= GameConfig.DIAMOND_LIFETIME + GameConfig.LOOT_MIN_SECONDS) {
+                collectingLoot = false
+                levelComplete = true
+            }
+            return
+        }
         when (phase) {
             WavePhase.COUNTDOWN -> {
                 countdown -= dt
@@ -96,7 +117,17 @@ class WaveManager(private val world: GameWorld) {
             world.playSound(SoundEffect.BOSS_ROAR)
             world.addShake(GameConfig.SHAKE_ON_BOSS_ROAR)
         } else {
-            world.playSound(SoundEffect.WAVE_START)
+            world.playSound(waveStartSound())
+        }
+    }
+
+    /** The run opens with its own sound; later waves rotate through three different ones. */
+    private fun waveStartSound(): SoundEffect = when {
+        wave <= 1 -> SoundEffect.GAME_START
+        else -> when (wave % 3) {
+            0 -> SoundEffect.WAVE_START_2
+            1 -> SoundEffect.WAVE_START_3
+            else -> SoundEffect.WAVE_START
         }
     }
 
@@ -145,10 +176,12 @@ class WaveManager(private val world: GameWorld) {
         world.playSound(SoundEffect.WAVE_CLEAR)
         val level = setup.levelData
         if (level != null && wave >= level.waves) {
-            // last wave of the level: pay the level bonus and stop here instead of counting down to another wave
+            // last wave of the level: pay the level bonus, then give the player time to pick up the boss's
+            // diamonds before the level-complete screen freezes the world.
             world.addCoins(level.bonusCoins)
             world.addDiamonds(level.bonusDiamonds)
-            levelComplete = true
+            collectingLoot = true
+            lootTimer = 0f
             return
         }
         wave++

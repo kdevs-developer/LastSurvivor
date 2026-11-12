@@ -55,5 +55,7 @@ data class HudState(
     /** Campaign level number; 0 in the endless mode. */
     val level: Int = 0,
     /** The last wave of the campaign level was cleared. */
-    val levelComplete: Boolean = false
+    val levelComplete: Boolean = false,
+    /** The last boss is down: the player can still collect the diamonds before the level ends. */
+    val collectingLoot: Boolean = false
 )

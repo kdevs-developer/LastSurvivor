@@ -56,6 +56,10 @@ class SoundManager private constructor(context: Context) : GameAudio {
             SoundEffect.BOSS_SUMMON -> R.raw.sfx_boss_summon
             SoundEffect.BOSS_DEATH -> R.raw.sfx_boss_death
             SoundEffect.WAVE_START -> R.raw.sfx_wave_start
+            SoundEffect.WAVE_START_2 -> R.raw.sfx_wave_start_2
+            SoundEffect.WAVE_START_3 -> R.raw.sfx_wave_start_3
+            SoundEffect.GAME_START -> R.raw.sfx_game_start
+            SoundEffect.THUNDER -> R.raw.sfx_thunder
             SoundEffect.WAVE_CLEAR -> R.raw.sfx_wave_clear
             SoundEffect.GAME_OVER -> R.raw.sfx_game_over
             SoundEffect.UI_CLICK -> R.raw.sfx_ui_click

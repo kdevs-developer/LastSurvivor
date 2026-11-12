@@ -1,6 +1,7 @@
 package com.kdevs.lastsurvivor.game.entities
 
 import com.kdevs.lastsurvivor.game.engine.GameConfig
+import com.kdevs.lastsurvivor.game.engine.MapLayout
 import kotlin.math.atan2
 import kotlin.math.sqrt
 
@@ -77,6 +78,10 @@ class Zombie : Entity(0f, 0f, 26f) {
     private var abilityTimer: Float = 0f
     private var chargeHit: Boolean = false
 
+    // ---- pathing: which way round a blocking prop this zombie has chosen (-1, 0 = none, +1) ----
+    private var steerSide: Int = 0
+    private var steerMemory: Float = 0f
+
     val isBoss: Boolean get() = type.isBoss
 
     val alive: Boolean get() = state != ZombieState.DEAD
@@ -108,6 +113,8 @@ class Zombie : Entity(0f, 0f, 26f) {
         pendingDamage = 0f
         stunTimer = 0f
         numberCooldown = 0f
+        steerSide = 0
+        steerMemory = 0f
         windupJustStarted = false
         chargeJustStarted = false
         enrageJustStarted = false
@@ -146,10 +153,11 @@ class Zombie : Entity(0f, 0f, 26f) {
     }
 
     /**
-     * Chase AI: face the player, walk straight at them, and swing when in reach.
+     * Chase AI: face the player, walk at them (going round any prop in the way when a [map] is given), and
+     * swing when in reach.
      * Returns true on the tick a swing lands (Phase 6 applies the damage to the player).
      */
-    fun chase(dt: Float, player: Player): Boolean {
+    fun chase(dt: Float, player: Player, map: MapLayout? = null): Boolean {
         if (state == ZombieState.DEAD) return false
         if (stunTimer > 0f) {
             state = ZombieState.IDLE
@@ -199,8 +207,23 @@ class Zombie : Entity(0f, 0f, 26f) {
             }
         } else {
             val inv = 1f / dist
-            x += dx * inv * speed * dt
-            y += dy * inv * speed * dt
+            var mx = dx * inv
+            var my = dy * inv
+            if (map != null) {
+                val side = map.steer(x, y, radius, mx, my, minOf(GameConfig.ZOMBIE_STEER_LOOKAHEAD + radius, dist), steerSide)
+                if (side != 0) {
+                    steerSide = side
+                    steerMemory = GameConfig.ZOMBIE_STEER_MEMORY
+                    mx = map.steerX
+                    my = map.steerY
+                    rotation = atan2(my, mx) // look where it is walking while going round
+                } else if (steerMemory > 0f) {
+                    steerMemory -= dt
+                    if (steerMemory <= 0f) steerSide = 0
+                }
+            }
+            x += mx * speed * dt
+            y += my * speed * dt
             moved = true
         }
 

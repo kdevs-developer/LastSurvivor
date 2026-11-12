@@ -8,6 +8,8 @@
     <string name="mode_level_info_format">Level %1$d  \u2022  %2$s  \u2022  %3$d waves  \u2022  boss finale</string>
     <string name="mode_level_locked_format">Level %1$d  \u2022  clear level %2$d to unlock</string>
     <string name="mode_infinite_info_format">%1$s  \u2022  endless waves, a boss every 5th</string>
+    <string name="mode_area_locked_format">%1$s  \u2022  reach campaign level %2$d to unlock</string>
+    <string name="mode_area_unlock_hint_format">Locked. Reach campaign level %1$d.</string>
     <string name="mode_start_level_format">START LEVEL %1$d</string>
     <string name="mode_start_infinite">START INFINITE</string>
     <string name="mode_level_locked">Locked</string>

@@ -46,6 +46,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import kotlin.math.roundToInt
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -244,17 +253,40 @@ private fun CoinChip(coins: Int) {
     }
 }
 
-/** Underline tabs. Wraps its content and scrolls sideways if the screen is too narrow for all four. */
+/**
+ * Underline tabs that scroll sideways. The selected weapon is always brought to the middle of the row, so
+ * the one being viewed stays centred and the others sit either side of it (also with the arrows, which
+ * select the next or previous weapon).
+ */
 @Composable
 private fun WeaponTabs(state: UpgradesUiState, actions: ArmoryActions) {
     val line = colorResource(R.color.neon_border)
-    Box(
-        modifier = Modifier.drawBehind {
-            drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+    val scroll = rememberScrollState()
+    val density = LocalDensity.current
+    var viewportPx by remember { mutableIntStateOf(0) }
+    // where each tab's centre is inside the row (pixels), filled in as the tabs are laid out
+    val centres = remember { mutableStateMapOf<WeaponType, Float>() }
+    val selectedCentre = centres[state.selected]
+
+    // With half a viewport of padding on both sides, scrolling to a tab's centre puts it in the middle.
+    LaunchedEffect(state.selected, selectedCentre, viewportPx, scroll.maxValue) {
+        if (selectedCentre != null && viewportPx > 0) {
+            scroll.animateScrollTo(selectedCentre.roundToInt().coerceIn(0, scroll.maxValue))
         }
+    }
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .onSizeChanged { viewportPx = it.width }
+            .drawBehind {
+                drawLine(line, Offset(0f, size.height), Offset(size.width, size.height), strokeWidth = 1.dp.toPx())
+            }
     ) {
         Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            modifier = Modifier
+                .horizontalScroll(scroll)
+                .padding(horizontal = with(density) { (viewportPx / 2f).toDp() }),
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
             for (type in WeaponType.entries) {
@@ -262,7 +294,8 @@ private fun WeaponTabs(state: UpgradesUiState, actions: ArmoryActions) {
                     type = type,
                     selected = type == state.selected,
                     owned = state.inventory.owns(type),
-                    onClick = { actions.onSelect(type) }
+                    onClick = { actions.onSelect(type) },
+                    modifier = Modifier.onGloballyPositioned { centres[type] = it.positionInParent().x + it.size.width / 2f }
                 )
             }
         }
@@ -270,7 +303,7 @@ private fun WeaponTabs(state: UpgradesUiState, actions: ArmoryActions) {
 }
 
 @Composable
-private fun WeaponTab(type: WeaponType, selected: Boolean, owned: Boolean, onClick: () -> Unit) {
+private fun WeaponTab(type: WeaponType, selected: Boolean, owned: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val accent = colorResource(R.color.neon_green)
     val color by animateColorAsState(
         targetValue = when {
@@ -281,7 +314,7 @@ private fun WeaponTab(type: WeaponType, selected: Boolean, owned: Boolean, onCli
         label = "weaponTabColor"
     )
     Column(
-        modifier = Modifier
+        modifier = modifier
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick)
             .padding(horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -750,6 +783,60 @@ private fun WeaponArt(type: WeaponType, owned: Boolean, modifier: Modifier = Mod
                 rect(52f, 26f, 8f, 22f)
                 poly(30f, 26f, 40f, 26f, 36f, 46f, 30f, 46f)
                 rect(22f, 14f, 60f, 3f, accent)
+            }
+
+            WeaponType.REVOLVER -> {
+                rect(30f, 14f, 80f, 9f)
+                rect(104f, 17f, 10f, 4f)
+                rect(26f, 12f, 26f, 18f)
+                poly(8f, 20f, 26f, 18f, 30f, 30f, 22f, 56f, 8f, 56f, 12f, 34f)
+                rect(30f, 14f, 80f, 2f, accent)
+                rect(36f, 18f, 8f, 4f, accent)
+            }
+
+            WeaponType.ASSAULT -> {
+                poly(2f, 14f, 22f, 16f, 22f, 32f, 4f, 36f)
+                rect(22f, 12f, 52f, 14f)
+                rect(70f, 15f, 34f, 9f)
+                rect(104f, 17f, 12f, 5f)
+                poly(46f, 26f, 56f, 26f, 62f, 54f, 52f, 54f)
+                poly(30f, 26f, 40f, 26f, 36f, 44f, 30f, 44f)
+                rect(22f, 12f, 52f, 3f, accent)
+                rect(70f, 15f, 34f, 3f, accent)
+            }
+
+            WeaponType.AUTO_SHOTGUN -> {
+                rect(34f, 14f, 82f, 6f)
+                rect(30f, 20f, 40f, 12f)
+                rect(70f, 20f, 36f, 8f)
+                poly(4f, 17f, 30f, 17f, 30f, 32f, 14f, 40f, 4f, 32f)
+                poly(42f, 32f, 54f, 32f, 56f, 52f, 40f, 52f)
+                rect(34f, 14f, 82f, 2f, accent)
+                rect(48f, 22f, 18f, 4f, accent)
+            }
+
+            WeaponType.SNIPER -> {
+                poly(2f, 18f, 24f, 18f, 24f, 32f, 4f, 36f)
+                rect(24f, 16f, 44f, 10f)
+                rect(68f, 19f, 50f, 4f)
+                rect(30f, 6f, 30f, 7f)
+                rect(34f, 13f, 4f, 3f)
+                rect(52f, 13f, 4f, 3f)
+                poly(40f, 26f, 48f, 26f, 44f, 44f, 38f, 44f)
+                rect(24f, 16f, 44f, 3f, accent)
+                rect(30f, 6f, 30f, 2f, accent)
+            }
+
+            WeaponType.MINIGUN -> {
+                rect(18f, 8f, 34f, 22f)
+                rect(52f, 11f, 60f, 4f)
+                rect(52f, 17f, 60f, 4f)
+                rect(52f, 23f, 60f, 4f)
+                rect(106f, 9f, 8f, 20f)
+                poly(2f, 14f, 18f, 14f, 18f, 30f, 2f, 30f)
+                poly(26f, 30f, 38f, 30f, 36f, 52f, 28f, 52f)
+                rect(18f, 8f, 34f, 3f, accent)
+                rect(52f, 11f, 60f, 2f, accent)
             }
         }
     }

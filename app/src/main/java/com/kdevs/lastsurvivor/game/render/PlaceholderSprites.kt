@@ -288,8 +288,8 @@ object PlaceholderSprites {
         drawWeapon(c, p, s, weapon, colors)
 
         // arms and hands reaching to the weapon
-        val nearX = when (weapon) { WeaponType.PISTOL -> 0.15f; WeaponType.SMG -> 0.14f; WeaponType.SHOTGUN -> 0.14f; WeaponType.RIFLE -> 0.13f }
-        val farX = when (weapon) { WeaponType.PISTOL -> 0.21f; WeaponType.SMG -> 0.31f; WeaponType.SHOTGUN -> 0.37f; WeaponType.RIFLE -> 0.39f }
+        val nearX = when (weapon) { WeaponType.PISTOL, WeaponType.REVOLVER -> 0.15f; WeaponType.SMG, WeaponType.AUTO_SHOTGUN -> 0.14f; WeaponType.SHOTGUN -> 0.14f; WeaponType.RIFLE, WeaponType.SNIPER -> 0.13f; WeaponType.ASSAULT, WeaponType.MINIGUN -> 0.14f }
+        val farX = when (weapon) { WeaponType.PISTOL -> 0.21f; WeaponType.REVOLVER -> 0.23f; WeaponType.SMG -> 0.31f; WeaponType.SHOTGUN -> 0.37f; WeaponType.AUTO_SHOTGUN -> 0.38f; WeaponType.RIFLE -> 0.39f; WeaponType.ASSAULT -> 0.38f; WeaponType.SNIPER -> 0.42f; WeaponType.MINIGUN -> 0.36f }
         val nearY = m + s * 0.06f
         val farY = m - s * 0.05f
         limb(c, p, m + s * 0.02f, m + s * 0.25f, m + s * nearX, nearY, s * 0.1f, palette.arm, line, ow)
@@ -333,6 +333,37 @@ object PlaceholderSprites {
                 bar(c, p, m + s * 0.31f, m + s * 0.52f, m, s * 0.045f, colors.playerWeapon, line, ow)     // barrel
                 bar(c, p, m + s * 0.15f, m + s * 0.31f, m, s * 0.04f, colors.playerWeaponAccent, line, ow) // scope
                 bar(c, p, m + s * 0.49f, m + s * 0.52f, m, s * 0.06f, colors.playerWeaponAccent, line, 0f)
+            }
+            WeaponType.REVOLVER -> {
+                bar(c, p, m + s * 0.10f, m + s * 0.41f, m, s * 0.07f, colors.playerWeapon, line, ow)       // long barrel
+                disc(c, p, m + s * 0.16f, m, s * 0.055f, colors.playerWeaponAccent, line, ow)              // cylinder
+                bar(c, p, m + s * 0.05f, m + s * 0.12f, m + s * 0.005f, s * 0.07f, colors.playerWeaponWood, line, ow) // grip
+            }
+            WeaponType.ASSAULT -> {
+                bar(c, p, m - s * 0.04f, m + s * 0.11f, m, s * 0.08f, colors.playerWeaponWood, line, ow)   // stock
+                bar(c, p, m + s * 0.11f, m + s * 0.32f, m, s * 0.085f, colors.playerWeapon, line, ow)      // receiver
+                bar(c, p, m + s * 0.20f, m + s * 0.38f, m, s * 0.1f, colors.playerWeaponWood, line, ow)    // handguard
+                bar(c, p, m + s * 0.32f, m + s * 0.51f, m, s * 0.045f, colors.playerWeapon, line, ow)      // barrel
+                bar(c, p, m + s * 0.46f, m + s * 0.52f, m, s * 0.06f, colors.playerWeaponAccent, line, 0f) // muzzle brake
+            }
+            WeaponType.AUTO_SHOTGUN -> {
+                bar(c, p, m - s * 0.02f, m + s * 0.13f, m, s * 0.085f, colors.playerWeaponWood, line, ow)
+                bar(c, p, m + s * 0.13f, m + s * 0.33f, m, s * 0.115f, colors.playerWeapon, line, ow)      // fat receiver / drum
+                bar(c, p, m + s * 0.33f, m + s * 0.54f, m, s * 0.06f, colors.playerWeapon, line, ow)
+                bar(c, p, m + s * 0.52f, m + s * 0.55f, m, s * 0.07f, colors.playerWeaponAccent, line, 0f)
+            }
+            WeaponType.SNIPER -> {
+                bar(c, p, m - s * 0.05f, m + s * 0.12f, m, s * 0.085f, colors.playerWeaponWood, line, ow)
+                bar(c, p, m + s * 0.12f, m + s * 0.30f, m, s * 0.07f, colors.playerWeapon, line, ow)
+                bar(c, p, m + s * 0.30f, m + s * 0.58f, m, s * 0.04f, colors.playerWeapon, line, ow)       // long barrel
+                bar(c, p, m + s * 0.14f, m + s * 0.34f, m - s * 0.05f, s * 0.045f, colors.playerWeaponAccent, line, ow) // big scope
+                bar(c, p, m + s * 0.55f, m + s * 0.58f, m, s * 0.055f, colors.playerWeaponAccent, line, 0f)
+            }
+            WeaponType.MINIGUN -> {
+                bar(c, p, m + s * 0.06f, m + s * 0.24f, m, s * 0.13f, colors.playerWeapon, line, ow)       // motor housing
+                bar(c, p, m + s * 0.24f, m + s * 0.50f, m - s * 0.025f, s * 0.03f, colors.playerWeaponAccent, line, ow) // barrel cluster
+                bar(c, p, m + s * 0.24f, m + s * 0.50f, m + s * 0.025f, s * 0.03f, colors.playerWeaponAccent, line, ow)
+                bar(c, p, m + s * 0.46f, m + s * 0.50f, m, s * 0.09f, colors.playerWeapon, line, ow)       // muzzle ring
             }
         }
     }

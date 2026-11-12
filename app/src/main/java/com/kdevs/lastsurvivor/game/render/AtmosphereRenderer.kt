@@ -5,6 +5,7 @@ import android.graphics.Paint
 import android.graphics.RadialGradient
 import android.graphics.Shader
 import com.kdevs.lastsurvivor.game.engine.GameArea
+import com.kdevs.lastsurvivor.game.engine.GameConfig
 import com.kdevs.lastsurvivor.game.engine.GameWorld
 import kotlin.math.max
 import kotlin.math.min
@@ -190,7 +191,7 @@ class AtmosphereRenderer(private val colors: GameColors) {
 
     /** Two quick flashes every ten seconds. */
     private fun drawLightning(canvas: Canvas, time: Float, w: Int, h: Int) {
-        val t = time % 10f
+        val t = time % GameConfig.LIGHTNING_PERIOD
         val strength = when {
             t < 0.10f -> 0.5f * (1f - t / 0.10f)
             t in 0.26f..0.36f -> 0.35f * (1f - (t - 0.26f) / 0.10f)

@@ -1,6 +1,5 @@
 package com.kdevs.lastsurvivor.ui.mode
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -36,10 +35,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -113,17 +108,18 @@ fun ModeSelectScreen(
                             sounds.play(SoundEffect.UI_CLICK); pickedLevel = it
                         }
                     } else {
-                        AreaRow(selected = area) {
+                        AreaRow(selected = area, unlockedLevel = unlocked) {
                             sounds.play(SoundEffect.UI_CLICK); pickedArea = it.ordinal
                         }
                     }
                 }
 
                 // info about the selection + the one Start button
-                val locked = tab == TAB_CAMPAIGN && level > unlocked
+                val locked = if (tab == TAB_CAMPAIGN) level > unlocked else !Campaign.isAreaUnlocked(area, unlocked)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text(
                         text = when {
+                            tab == TAB_INFINITE && locked -> stringResource(R.string.mode_area_locked_format, stringResource(area.nameRes), Campaign.firstLevelOf(area)) + "\n" + stringResource(area.featureRes)
                             tab == TAB_INFINITE -> stringResource(R.string.mode_infinite_info_format, stringResource(area.nameRes)) + "\n" + stringResource(area.featureRes)
                             locked -> stringResource(R.string.mode_level_locked_format, level, level - 1)
                             else -> {
@@ -266,6 +262,9 @@ private fun LevelTile(
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
+        // each level has its own little scene (its area's scenery, arranged by the level number)
+        AreaScenery(area, seed = level.number, modifier = Modifier.fillMaxSize())
+        Box(modifier = Modifier.fillMaxSize().background(colorResource(R.color.scenery_scrim)))
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
                 stringResource(R.string.mode_level_format, level.number),
@@ -298,20 +297,24 @@ private fun LevelTile(
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun AreaRow(selected: GameArea, onPick: (GameArea) -> Unit) {
+private fun AreaRow(selected: GameArea, unlockedLevel: Int, onPick: (GameArea) -> Unit) {
     Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         for (area in GameArea.entries) {
-            AreaCard(area, area == selected, Modifier.weight(1f).fillMaxHeight()) { onPick(area) }
+            AreaCard(
+                area, area == selected, !Campaign.isAreaUnlocked(area, unlockedLevel),
+                Modifier.weight(1f).fillMaxHeight()
+            ) { onPick(area) }
         }
     }
 }
 
 @Composable
-private fun AreaCard(area: GameArea, selected: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
+private fun AreaCard(area: GameArea, selected: Boolean, locked: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
     val accent = colorResource(area.accent)
     val shape = RoundedCornerShape(12.dp)
     Column(
         modifier = modifier
+            .alpha(if (locked) 0.55f else 1f)
             .clip(shape)
             .background(colorResource(R.color.neon_panel))
             .border(
@@ -324,14 +327,18 @@ private fun AreaCard(area: GameArea, selected: Boolean, modifier: Modifier = Mod
         verticalArrangement = Arrangement.spacedBy(6.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AreaPreview(
-            floor = colorResource(area.floorBase),
-            speck = colorResource(area.floorSpeck),
-            line = colorResource(area.floorLine),
-            rubble = colorResource(area.decorRubbleLight),
-            border = colorResource(area.border),
-            modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp))
-        )
+        Box(modifier = Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(8.dp))) {
+            AreaScenery(area, seed = area.ordinal + 1, modifier = Modifier.fillMaxSize())
+            if (locked) {
+                Box(modifier = Modifier.fillMaxSize().background(colorResource(R.color.scenery_scrim)))
+                Icon(
+                    Icons.Filled.Lock,
+                    contentDescription = stringResource(R.string.mode_level_locked),
+                    tint = colorResource(R.color.neon_label),
+                    modifier = Modifier.align(Alignment.Center).size(28.dp)
+                )
+            }
+        }
         Text(
             stringResource(area.nameRes),
             style = MaterialTheme.typography.labelMedium,
@@ -341,38 +348,12 @@ private fun AreaCard(area: GameArea, selected: Boolean, modifier: Modifier = Mod
             overflow = TextOverflow.Ellipsis
         )
         Text(
-            stringResource(area.featureRes),
+            if (locked) stringResource(R.string.mode_area_unlock_hint_format, Campaign.firstLevelOf(area)) else stringResource(area.featureRes),
             style = MaterialTheme.typography.labelSmall,
             color = colorResource(R.color.neon_label),
             maxLines = 4,
             overflow = TextOverflow.Ellipsis,
             lineHeight = 13.sp
         )
-    }
-}
-
-/** A tiny stand-in for the real floor: base colour, slab joints, specks, a few rubble stones and the map border. */
-@Composable
-private fun AreaPreview(floor: Color, speck: Color, line: Color, rubble: Color, border: Color, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        drawRect(floor)
-        val cols = 4
-        val rows = 3
-        val cw = size.width / cols
-        val ch = size.height / rows
-        for (i in 1 until cols) drawLine(line, Offset(cw * i, 0f), Offset(cw * i, size.height), strokeWidth = 2f)
-        for (j in 1 until rows) drawLine(line, Offset(0f, ch * j), Offset(size.width, ch * j), strokeWidth = 2f)
-        // fixed pseudo-random specks, so the preview does not change between redraws
-        for (n in 0 until 14) {
-            val x = ((n * 53) % 97) / 97f * size.width
-            val y = ((n * 29) % 89) / 89f * size.height
-            drawRect(speck, topLeft = Offset(x, y), size = Size(size.width * 0.07f, size.height * 0.05f))
-        }
-        for (n in 0 until 5) {
-            val x = ((n * 41 + 17) % 83) / 83f * size.width
-            val y = ((n * 67 + 11) % 79) / 79f * size.height
-            drawCircle(rubble, radius = size.minDimension * 0.045f, center = Offset(x, y))
-        }
-        drawRect(border, style = Stroke(width = 5f))
     }
 }

@@ -27,7 +27,7 @@ object GameConfig {
     const val HURT_FLASH_SECONDS = 0.3f
 
     // ---- Phase 6: waves ----
-    const val FIRST_WAVE_COUNTDOWN = 3f
+    const val FIRST_WAVE_COUNTDOWN = 5f
     const val WAVE_COUNTDOWN = 5f
     /** Zombies in a wave = WAVE_BASE_COUNT + WAVE_COUNT_PER_WAVE * wave, capped at WAVE_MAX_COUNT. */
     const val WAVE_BASE_COUNT = 5
@@ -116,15 +116,36 @@ object GameConfig {
     const val BOSS_SUMMON_COUNT = 3
     const val BOSS_SUMMON_ALIVE_LIMIT = 45
 
+    // ---- Graveyard lightning ----
+    /** A lightning flash every this many seconds; the thunder follows THUNDER_DELAY seconds after it. */
+    const val LIGHTNING_PERIOD = 10f
+    const val THUNDER_DELAY = 0.9f
+
+    // ---- Music ----
+    /** Background music volume (0..1). Kept low so it stays mild under the effects. */
+    const val MUSIC_VOLUME = 0.22f
+
+    // ---- Zombie pathing: how they walk around props ----
+    /** How far ahead (world units) a zombie looks for a prop in its way. */
+    const val ZOMBIE_STEER_LOOKAHEAD = 170f
+    /** Extra clearance kept from a prop's edge while walking around it. */
+    const val ZOMBIE_STEER_MARGIN = 10f
+    /** A zombie keeps going round the same side of a prop for this long after it was last blocked. */
+    const val ZOMBIE_STEER_MEMORY = 0.7f
+
     // ---- Characters and diamonds ----
     /** A diamond pickup stays on the ground this long (longer than other pickups: they are precious). */
     const val DIAMOND_LIFETIME = 20f
+    /** After the last boss dies the level waits at least this long (and until the diamonds are gone) before ending. */
+    const val LOOT_MIN_SECONDS = 1.5f
     /** Bosses drop this many diamonds. */
     const val BOSS_DIAMOND_DROPS = 5
     /** Extra diamonds for clearing a boss wave are the drops above; normal zombies use ZombieType.diamondChance. */
 
     // ---- Character abilities (cooldowns are in AbilityType) ----
-    const val ADRENALINE_SECONDS = 4f
+    const val ADRENALINE_SECONDS = 5f
+    /** Adrenaline also patches the survivor up a little. */
+    const val ADRENALINE_HEAL = 15f
     const val ADRENALINE_SPEED_MULT = 1.5f
     const val DASH_SECONDS = 0.2f
     /** Dash speed; the distance covered is DASH_SPEED x DASH_SECONDS (300 units). */
@@ -146,6 +167,47 @@ object GameConfig {
     /** How far in front of the player the turret is placed. */
     const val TURRET_PLACE_DISTANCE = 70f
     const val RAGE_SECONDS = 6f
+    /** Marksman: Deadeye makes every shot hit harder and punch through extra zombies. */
+    const val DEADEYE_SECONDS = 6f
+    const val DEADEYE_DAMAGE_MULT = 2f
+    const val DEADEYE_EXTRA_PIERCE = 2
+    /** Cryo: Freeze stuns every zombie within this radius (bosses only for BOSS_STUN_FRACTION of the time). */
+    const val FREEZE_RADIUS = 560f
+    const val FREEZE_SECONDS = 3f
+    const val FREEZE_BOSS_STUN_FRACTION = 0.4f
+    /** Demolitionist: Airstrike drops this many blasts, one every AIRSTRIKE_INTERVAL seconds, on the zombies. */
+    const val AIRSTRIKE_BLASTS = 5
+    const val AIRSTRIKE_INTERVAL = 0.22f
+    const val AIRSTRIKE_RANGE = 900f
+    /** Scavenger: Jackpot drops this many random pickups around the player. */
+    const val JACKPOT_DROPS = 3
+    const val JACKPOT_SCATTER = 90f
+
+    // ---- Character passives (always on; which character has which is in GameCharacter) ----
+    /** Survivor, Last Stand: the first deadly hit of a run leaves this fraction of health and a moment of safety. */
+    const val LAST_STAND_HEALTH_FRACTION = 0.35f
+    const val LAST_STAND_INVULN_SECONDS = 2.5f
+    /** Runner, Nimble: chance that a zombie's swing misses completely. */
+    const val NIMBLE_DODGE_CHANCE = 0.15f
+    /** Tank, Spiked Armor: damage dealt back to a zombie whose swing lands. */
+    const val THORNS_DAMAGE = 14f
+    /** Medic, Triage: health restored by every kill. */
+    const val TRIAGE_KILL_HEAL = 2f
+    /** Engineer, Overclock: abilities recharge this much faster (multiplies the cooldown). */
+    const val OVERCLOCK_COOLDOWN_MULT = 0.75f
+    /** Commando, Veteran: weapon damage multiplier. */
+    const val VETERAN_DAMAGE_MULT = 1.15f
+    /** Scavenger: coins from kills, and how much longer collected power-ups last. */
+    const val SCAVENGER_COIN_MULT = 1.35f
+    const val SCAVENGER_BUFF_MULT = 1.3f
+    /** Marksman, Sharpshooter: chance for a shot to crit, and the crit multiplier. */
+    const val CRIT_CHANCE = 0.2f
+    const val CRIT_DAMAGE_MULT = 2.5f
+    /** Cryo, Frostbite: chance for a bullet to freeze a (non-boss) zombie, and for how long. */
+    const val FROSTBITE_CHANCE = 0.12f
+    const val FROSTBITE_SECONDS = 1.0f
+    /** Demolitionist, Blast Expert: multiplier on grenade, barrel and airstrike blast damage. */
+    const val BLAST_EXPERT_DAMAGE_MULT = 1.5f
 
     // ---- Phase 10: saving ----
     /** Continue restores at least this fraction of the maximum health, so a checkpoint is never a death trap. */

@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -58,7 +62,6 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.data.PlayerStats
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
-import com.kdevs.lastsurvivor.game.entities.AbilityType
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.ui.DiamondIcon
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
@@ -274,7 +277,7 @@ private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, co
             )
         }
         SpecGrid(character)
-        AbilityBox(character.ability, Modifier.weight(1f))
+        SkillsBox(character, Modifier.weight(1f))
         CharacterActionButton(state, actions)
     }
 }
@@ -357,49 +360,64 @@ private fun SpecTile(spec: SpecLine, modifier: Modifier = Modifier) {
     }
 }
 
-// ---- Ability: icon, name, cooldown, description in one box ----------------------------------
+// ---- Skills: the active ability and the passive skill in one box ----------------------------
 
 @Composable
-private fun AbilityBox(ability: AbilityType, modifier: Modifier = Modifier) {
+private fun SkillsBox(character: GameCharacter, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(10.dp)
-    Row(
+    // scrolls if a short screen cannot fit both skills; on normal screens it never needs to
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(colorResource(R.color.survivor_background))
             .border(1.dp, colorResource(R.color.neon_border), shape)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(
-            ability.icon(),
-            contentDescription = null,
-            tint = colorResource(R.color.control_ability),
-            modifier = Modifier.size(26.dp)
+        SkillRow(
+            icon = character.ability.icon(),
+            iconTint = colorResource(R.color.control_ability),
+            name = stringResource(character.ability.nameRes()),
+            tag = stringResource(R.string.character_label_active) + " · " +
+                stringResource(R.string.character_cooldown_format, character.abilityCooldownSeconds.roundToInt()),
+            description = stringResource(character.ability.descriptionRes())
         )
+        SkillRow(
+            icon = Icons.Filled.Star,
+            iconTint = colorResource(R.color.neon_green),
+            name = stringResource(character.passive.nameRes()),
+            tag = stringResource(R.string.character_label_passive),
+            description = stringResource(character.passive.descriptionRes())
+        )
+    }
+}
+
+@Composable
+private fun SkillRow(icon: ImageVector, iconTint: Color, name: String, tag: String, description: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    stringResource(ability.nameRes()),
+                    name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = colorResource(R.color.neon_title),
                     maxLines = 1
                 )
                 Text(
-                    stringResource(R.string.character_cooldown_format, ability.cooldownSeconds.roundToInt()),
+                    tag,
                     style = MaterialTheme.typography.labelSmall,
                     color = colorResource(R.color.neon_green_dim),
                     maxLines = 1
                 )
             }
             Text(
-                stringResource(ability.descriptionRes()),
+                description,
                 style = MaterialTheme.typography.bodySmall,
-                color = colorResource(R.color.neon_label),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                color = colorResource(R.color.neon_label)
             )
         }
     }

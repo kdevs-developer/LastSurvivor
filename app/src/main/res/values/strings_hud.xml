@@ -10,6 +10,7 @@
     <string name="hud_poisoned">POISONED</string>
     <string name="hud_ammo_format">%1$d / %2$d</string>
     <string name="hud_reloading">RELOADING</string>
+    <string name="hud_collect_diamonds">Collect the diamonds!</string>
     <string name="hud_banner_wave_format">WAVE %1$d</string>
     <string name="hud_banner_starts_in_format">Starts in %1$d</string>
     <string name="hud_banner_cleared">WAVE CLEARED</string>
