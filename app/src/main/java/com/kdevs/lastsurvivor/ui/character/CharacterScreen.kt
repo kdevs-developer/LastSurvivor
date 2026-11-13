@@ -22,8 +22,6 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -101,6 +99,11 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
         onUnlock = viewModel::unlock
     )
 
+    CharacterScreenContent(state, actions)
+}
+
+@Composable
+private fun CharacterScreenContent(state: CharacterUiState, actions: CharacterActions) {
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -206,7 +209,7 @@ private fun CharacterPanel(
     ) {
         // 1. preview between the arrows, page dots underneath
         Column(
-            modifier = Modifier.weight(1f).fillMaxHeight(),
+            modifier = Modifier.weight(0.9f).fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -227,7 +230,7 @@ private fun CharacterPanel(
         }
 
         // 2. the character: name, role, specs, skills, action
-        CharacterInfo(state, actions, compact, Modifier.weight(1.2f).fillMaxHeight().padding(horizontal = 8.dp))
+        CharacterInfo(state, actions, compact, Modifier.weight(2f).fillMaxHeight().padding(horizontal = 8.dp))
     }
 }
 
@@ -243,32 +246,39 @@ private fun ArrowButton(icon: ImageVector, descriptionRes: Int, onClick: () -> U
     }
 }
 
-/** Fixed order of slots, the same for all six characters. The ability box absorbs any spare height. */
+/**
+ * Two columns, the same for all characters: [name, role, specs, action] and [active skill, passive skill].
+ * The skills get their own full-height column so their descriptions always show in full, no scrolling.
+ */
 @Composable
 private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, compact: Boolean, modifier: Modifier = Modifier) {
     val character = state.viewing
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
-        Column {
-            Text(
-                stringResource(character.nameRes()),
-                style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = colorResource(R.color.neon_title),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                stringResource(character.roleRes()),
-                style = MaterialTheme.typography.bodySmall,
-                color = colorResource(R.color.neon_label),
-                minLines = 2,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
+    val gap = if (compact) 4.dp else 6.dp
+    Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(modifier = Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(gap)) {
+            Column {
+                Text(
+                    stringResource(character.nameRes()),
+                    style = if (compact) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = colorResource(R.color.neon_title),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    stringResource(character.roleRes()),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorResource(R.color.neon_label),
+                    minLines = 2,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            SpecGrid(character)
+            Spacer(Modifier.weight(1f))
+            CharacterActionButton(state, actions)
         }
-        SpecGrid(character)
-        SkillsBox(character, Modifier.weight(1f))
-        CharacterActionButton(state, actions)
+        SkillsColumn(character, gap, Modifier.weight(1f).fillMaxHeight())
     }
 }
 
@@ -350,52 +360,61 @@ private fun SpecTile(spec: SpecLine, modifier: Modifier = Modifier) {
     }
 }
 
-// ---- Skills: the active ability and the passive skill in one box ----------------------------
+// ---- Skills: the active ability and the passive skill, each in its own box (no scrolling) ---
 
 @Composable
-private fun SkillsBox(character: GameCharacter, modifier: Modifier = Modifier) {
+private fun SkillsColumn(character: GameCharacter, gap: Dp, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(gap)) {
+        SkillCard(
+            icon = character.ability.icon(),
+            iconTint = colorResource(R.color.control_ability),
+            name = stringResource(character.ability.nameRes()),
+            tag = stringResource(R.string.character_label_active) + " · " +
+                    stringResource(R.string.character_cooldown_format, character.abilityCooldownSeconds.roundToInt()),
+            description = stringResource(character.ability.descriptionRes()),
+            modifier = Modifier.weight(1f)
+        )
+        SkillCard(
+            icon = Icons.Filled.Star,
+            iconTint = colorResource(R.color.neon_green),
+            name = stringResource(character.passive.nameRes()),
+            tag = stringResource(R.string.character_label_passive),
+            description = stringResource(character.passive.descriptionRes()),
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+/** Title row (icon, name, tag) with the full description underneath. */
+@Composable
+private fun SkillCard(
+    icon: ImageVector,
+    iconTint: Color,
+    name: String,
+    tag: String,
+    description: String,
+    modifier: Modifier = Modifier
+) {
     val shape = RoundedCornerShape(10.dp)
-    // scrolls if a short screen cannot fit both skills; on normal screens it never needs to
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(colorResource(R.color.survivor_background))
             .border(1.dp, colorResource(R.color.neon_border), shape)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically)
     ) {
-        SkillRow(
-            icon = character.ability.icon(),
-            iconTint = colorResource(R.color.control_ability),
-            name = stringResource(character.ability.nameRes()),
-            tag = stringResource(R.string.character_label_active) + " · " +
-                stringResource(R.string.character_cooldown_format, character.abilityCooldownSeconds.roundToInt()),
-            description = stringResource(character.ability.descriptionRes())
-        )
-        SkillRow(
-            icon = Icons.Filled.Star,
-            iconTint = colorResource(R.color.neon_green),
-            name = stringResource(character.passive.nameRes()),
-            tag = stringResource(R.string.character_label_passive),
-            description = stringResource(character.passive.descriptionRes())
-        )
-    }
-}
-
-@Composable
-private fun SkillRow(icon: ImageVector, iconTint: Color, name: String, tag: String, description: String) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
-        Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(22.dp))
+            Column {
                 Text(
                     name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = colorResource(R.color.neon_title),
-                    maxLines = 1
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     tag,
@@ -404,12 +423,12 @@ private fun SkillRow(icon: ImageVector, iconTint: Color, name: String, tag: Stri
                     maxLines = 1
                 )
             }
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = colorResource(R.color.neon_label)
-            )
         }
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = colorResource(R.color.neon_label)
+        )
     }
 }
 
