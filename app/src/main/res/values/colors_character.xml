@@ -26,6 +26,26 @@
     <color name="char_commando_pack">#FF2E3B24</color>
     <color name="char_commando_hair">#FF1B1B1B</color>
 
+    <color name="char_scavenger_body">#FF9E9D24</color>
+    <color name="char_scavenger_arm">#FFC0CA33</color>
+    <color name="char_scavenger_pack">#FF5D4037</color>
+    <color name="char_scavenger_hair">#FF3E2723</color>
+
+    <color name="char_marksman_body">#FF6A1B9A</color>
+    <color name="char_marksman_arm">#FF8E24AA</color>
+    <color name="char_marksman_pack">#FF311B92</color>
+    <color name="char_marksman_hair">#FFFFD54F</color>
+
+    <color name="char_cryo_body">#FF4FC3F7</color>
+    <color name="char_cryo_arm">#FF81D4FA</color>
+    <color name="char_cryo_pack">#FF0277BD</color>
+    <color name="char_cryo_hair">#FFECEFF1</color>
+
+    <color name="char_demolitionist_body">#FF212121</color>
+    <color name="char_demolitionist_arm">#FF424242</color>
+    <color name="char_demolitionist_pack">#FFFF6F00</color>
+    <color name="char_demolitionist_hair">#FFBF360C</color>
+
     <!-- Ability button on the game controls, and the diamond pill -->
     <color name="control_ability">#FF26C6DA</color>
 

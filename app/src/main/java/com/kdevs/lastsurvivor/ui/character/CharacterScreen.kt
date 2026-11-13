@@ -22,12 +22,15 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -56,17 +60,12 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
-import com.kdevs.lastsurvivor.data.PlayerStats
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
-import com.kdevs.lastsurvivor.game.entities.AbilityType
 import com.kdevs.lastsurvivor.game.entities.GameCharacter
 import com.kdevs.lastsurvivor.ui.DiamondIcon
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
 import java.util.Locale
 import kotlin.math.roundToInt
-
-/** Content never stretches wider than this, so tablets and TVs get a centred, readable layout. */
-private val MaxContentWidth: Dp = 1000.dp
 
 /** Screens shorter than this (after system bars) use tighter paddings and smaller text. */
 private val CompactHeight: Dp = 360.dp
@@ -78,17 +77,14 @@ private class CharacterActions(
     val onUnlock: () -> Unit
 )
 
-/** One line of the lifetime statistics list. */
-private class StatLine(val labelRes: Int, val value: String, val colorRes: Int)
-
 /**
- * Characters screen, compact and fixed (no scrolling). The game is landscape-only, so everything lives in
- * ONE panel that fills the space under the header:
+ * Characters screen: full screen, fixed (no scrolling), and only about the character. The game is
+ * landscape-only, so everything lives in ONE panel that fills the space under the header:
  *
- *   [<] preview [>]  |  name, role, six spec tiles, ability, Select / Unlock  |  lifetime statistics
+ *   [<] big preview [>]  |  name, role, six spec tiles, active + passive skill, Select / Unlock
  *
- * Arrows flip through the six characters one at a time. Every section uses weights, so the panel
- * shrinks or grows with the screen instead of scrolling.
+ * Arrows flip through the characters one at a time. Every character uses exactly the same slots and
+ * sizes (only the values change), and every section uses weights, so the panel fills any screen.
  */
 @Composable
 fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewModel()) {
@@ -117,7 +113,6 @@ fun CharacterScreen(onBack: () -> Unit, viewModel: CharacterViewModel = viewMode
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
             Column(
                 modifier = Modifier
-                    .widthIn(max = MaxContentWidth)
                     .fillMaxSize()
                     .padding(pad),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -189,7 +184,7 @@ private fun Header(actions: CharacterActions, diamonds: Int) {
 
 // ---------------------------------------------------------------------------------------------
 // The single panel. Every character uses exactly the same slots; only the values differ:
-//   preview + dots | name, role, six spec tiles, ability box, one button | lifetime statistics
+//   preview + dots | name, role, six spec tiles, skills box, one button
 // ---------------------------------------------------------------------------------------------
 
 @Composable
@@ -206,12 +201,12 @@ private fun CharacterPanel(
             .clip(shape)
             .background(colorResource(R.color.neon_panel))
             .border(1.dp, colorResource(R.color.neon_border), shape)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 1. preview between the arrows, page dots underneath
         Column(
-            modifier = Modifier.weight(0.8f).fillMaxHeight(),
+            modifier = Modifier.weight(1f).fillMaxHeight(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Row(modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -231,11 +226,8 @@ private fun CharacterPanel(
             }
         }
 
-        // 2. the character: name, role, specs, ability, action
-        CharacterInfo(state, actions, compact, Modifier.weight(1.45f).fillMaxHeight().padding(horizontal = 6.dp))
-
-        // 3. lifetime statistics as a compact list
-        LifetimeStats(state, compact, Modifier.weight(0.95f).fillMaxHeight().padding(start = 2.dp, end = 6.dp))
+        // 2. the character: name, role, specs, skills, action
+        CharacterInfo(state, actions, compact, Modifier.weight(1.2f).fillMaxHeight().padding(horizontal = 8.dp))
     }
 }
 
@@ -269,12 +261,13 @@ private fun CharacterInfo(state: CharacterUiState, actions: CharacterActions, co
                 stringResource(character.roleRes()),
                 style = MaterialTheme.typography.bodySmall,
                 color = colorResource(R.color.neon_label),
-                maxLines = 1,
+                minLines = 2,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
         SpecGrid(character)
-        AbilityBox(character.ability, Modifier.weight(1f))
+        SkillsBox(character, Modifier.weight(1f))
         CharacterActionButton(state, actions)
     }
 }
@@ -330,7 +323,7 @@ private fun SpecTile(spec: SpecLine, modifier: Modifier = Modifier) {
     }
     Row(
         modifier = modifier
-            .height(26.dp)
+            .height(30.dp)
             .clip(shape)
             .background(colorResource(R.color.survivor_background))
             .border(1.dp, colorResource(R.color.neon_border), shape)
@@ -357,49 +350,64 @@ private fun SpecTile(spec: SpecLine, modifier: Modifier = Modifier) {
     }
 }
 
-// ---- Ability: icon, name, cooldown, description in one box ----------------------------------
+// ---- Skills: the active ability and the passive skill in one box ----------------------------
 
 @Composable
-private fun AbilityBox(ability: AbilityType, modifier: Modifier = Modifier) {
+private fun SkillsBox(character: GameCharacter, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(10.dp)
-    Row(
+    // scrolls if a short screen cannot fit both skills; on normal screens it never needs to
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(colorResource(R.color.survivor_background))
             .border(1.dp, colorResource(R.color.neon_border), shape)
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
-        Icon(
-            ability.icon(),
-            contentDescription = null,
-            tint = colorResource(R.color.control_ability),
-            modifier = Modifier.size(26.dp)
+        SkillRow(
+            icon = character.ability.icon(),
+            iconTint = colorResource(R.color.control_ability),
+            name = stringResource(character.ability.nameRes()),
+            tag = stringResource(R.string.character_label_active) + " · " +
+                stringResource(R.string.character_cooldown_format, character.abilityCooldownSeconds.roundToInt()),
+            description = stringResource(character.ability.descriptionRes())
         )
+        SkillRow(
+            icon = Icons.Filled.Star,
+            iconTint = colorResource(R.color.neon_green),
+            name = stringResource(character.passive.nameRes()),
+            tag = stringResource(R.string.character_label_passive),
+            description = stringResource(character.passive.descriptionRes())
+        )
+    }
+}
+
+@Composable
+private fun SkillRow(icon: ImageVector, iconTint: Color, name: String, tag: String, description: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
         Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
-                    stringResource(ability.nameRes()),
+                    name,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.Bold,
                     color = colorResource(R.color.neon_title),
                     maxLines = 1
                 )
                 Text(
-                    stringResource(R.string.character_cooldown_format, ability.cooldownSeconds.roundToInt()),
+                    tag,
                     style = MaterialTheme.typography.labelSmall,
                     color = colorResource(R.color.neon_green_dim),
                     maxLines = 1
                 )
             }
             Text(
-                stringResource(ability.descriptionRes()),
+                description,
                 style = MaterialTheme.typography.bodySmall,
-                color = colorResource(R.color.neon_label),
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
+                color = colorResource(R.color.neon_label)
             )
         }
     }
@@ -471,67 +479,6 @@ private fun PageDot(selected: Boolean) {
         label = "dotColor"
     )
     Box(modifier = Modifier.size(width = width, height = 6.dp).clip(CircleShape).background(color))
-}
-
-// ---------------------------------------------------------------------------------------------
-// Lifetime statistics: one compact list inside the panel (label left, value right)
-// ---------------------------------------------------------------------------------------------
-
-@Composable
-private fun LifetimeStats(state: CharacterUiState, compact: Boolean, modifier: Modifier = Modifier) {
-    val stats = state.stats
-    val lines = listOf(
-        StatLine(R.string.stat_highest_wave, number(state.progress.highestWave), R.color.neon_green),
-        StatLine(R.string.stat_kills, number(stats.kills), R.color.neon_green),
-        StatLine(R.string.stat_runs, number(stats.runs), R.color.neon_title),
-        StatLine(R.string.stat_bosses, number(stats.bossKills), R.color.neon_title),
-        StatLine(R.string.stat_accuracy, stringResource(R.string.stat_accuracy_format, stats.accuracyPercent), R.color.neon_title),
-        StatLine(R.string.stat_coins_earned, number(stats.coinsEarned), R.color.coin_gold),
-        StatLine(R.string.stat_time, playTime(stats), R.color.neon_title)
-    )
-    val shape = RoundedCornerShape(12.dp)
-    Column(
-        modifier = modifier
-            .clip(shape)
-            .background(colorResource(R.color.survivor_background))
-            .border(1.dp, colorResource(R.color.neon_border), shape)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        for (line in lines) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                Text(
-                    stringResource(line.labelRes),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = colorResource(R.color.neon_label),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    line.value,
-                    style = if (compact) MaterialTheme.typography.labelLarge else MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = colorResource(line.colorRes),
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun number(value: Int): String = stringResource(R.string.stat_number_format, value)
-
-@Composable
-private fun playTime(stats: PlayerStats): String = when {
-    stats.playHours > 0 -> stringResource(R.string.stat_time_hours_format, stats.playHours, stats.playMinutes)
-    stats.playMinutes > 0 -> stringResource(R.string.stat_time_minutes_format, stats.playMinutes)
-    else -> stringResource(R.string.stat_time_none)
 }
 
 // ---------------------------------------------------------------------------------------------

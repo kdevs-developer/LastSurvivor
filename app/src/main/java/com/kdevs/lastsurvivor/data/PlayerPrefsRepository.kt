@@ -8,10 +8,12 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kdevs.lastsurvivor.game.engine.ControlSize
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.Campaign
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
@@ -81,6 +83,10 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         val GORE = stringPreferencesKey("gore_level")
         val DAMAGE_NUMBERS = booleanPreferencesKey("damage_numbers")
         val SHOW_FPS = booleanPreferencesKey("show_fps")
+        val MUSIC_VOLUME = floatPreferencesKey("music_volume")
+        val SFX_VOLUME = floatPreferencesKey("sfx_volume")
+        val VIBRATION = booleanPreferencesKey("vibration")
+        val CONTROL_SIZE = stringPreferencesKey("control_size")
         val DIAMONDS = intPreferencesKey("diamonds")
         val UNLOCKED_CHARACTERS = stringSetPreferencesKey("unlocked_characters")
         val SELECTED_CHARACTER = stringPreferencesKey("selected_character")
@@ -95,7 +101,8 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         val STAT_COINS = intPreferencesKey("stat_coins_earned")
 
         /** Keys that survive "Reset progress": options are not progress. */
-        val KEPT_ON_RESET = setOf(SOUND_ENABLED.name, SCREEN_SHAKE.name, GORE.name, DAMAGE_NUMBERS.name, SHOW_FPS.name)
+        val KEPT_ON_RESET = setOf(SOUND_ENABLED.name, SCREEN_SHAKE.name, GORE.name, DAMAGE_NUMBERS.name, SHOW_FPS.name,
+            MUSIC_VOLUME.name, SFX_VOLUME.name, VIBRATION.name, CONTROL_SIZE.name)
 
         fun level(type: WeaponType, track: UpgradeTrack) =
             intPreferencesKey("weapon_${type.name.lowercase()}_${track.name.lowercase()}")
@@ -132,7 +139,11 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
         screenShake = this[Keys.SCREEN_SHAKE] ?: true,
         gore = GoreLevel.entries.firstOrNull { it.name == this[Keys.GORE] } ?: GoreLevel.NORMAL,
         damageNumbers = this[Keys.DAMAGE_NUMBERS] ?: true,
-        showFps = this[Keys.SHOW_FPS] ?: false
+        showFps = this[Keys.SHOW_FPS] ?: false,
+        musicVolume = (this[Keys.MUSIC_VOLUME] ?: 1f).coerceIn(0f, 1f),
+        sfxVolume = (this[Keys.SFX_VOLUME] ?: 1f).coerceIn(0f, 1f),
+        vibration = this[Keys.VIBRATION] ?: true,
+        controlSize = ControlSize.entries.firstOrNull { it.name == this[Keys.CONTROL_SIZE] } ?: ControlSize.NORMAL
     )
 
     val settings: Flow<GameSettings> = data.map { it.toSettings() }.distinctUntilChanged()
@@ -146,6 +157,10 @@ class PlayerPrefsRepository(private val store: DataStore<Preferences>) {
             prefs[Keys.GORE] = s.gore.name
             prefs[Keys.DAMAGE_NUMBERS] = s.damageNumbers
             prefs[Keys.SHOW_FPS] = s.showFps
+            prefs[Keys.MUSIC_VOLUME] = s.musicVolume.coerceIn(0f, 1f)
+            prefs[Keys.SFX_VOLUME] = s.sfxVolume.coerceIn(0f, 1f)
+            prefs[Keys.VIBRATION] = s.vibration
+            prefs[Keys.CONTROL_SIZE] = s.controlSize.name
         }
     }
 

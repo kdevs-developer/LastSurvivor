@@ -2,10 +2,19 @@
 <!-- Module: settings screen (Phase 10) -->
 <resources>
     <string name="settings_title">SETTINGS</string>
+    <string name="settings_group_audio">Audio</string>
     <string name="settings_group_feel">Feel</string>
     <string name="settings_group_display">Display</string>
 
-    <string name="settings_sound">Sound effects</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_music_volume">Music</string>
+    <string name="settings_sfx_volume">Effects</string>
+    <string name="settings_control_size">Control size</string>
+    <string name="settings_control_small">Small</string>
+    <string name="settings_control_normal">Normal</string>
+    <string name="settings_control_large">Large</string>
+    <string name="settings_vibration">Vibration</string>
+    <string name="settings_vibration_desc">A short buzz when you are hurt or something blows up</string>
     <string name="settings_screen_shake">Screen shake</string>
     <string name="settings_screen_shake_desc">Camera shakes when you are hurt and on explosions</string>
     <string name="settings_damage_numbers">Damage numbers</string>

@@ -43,7 +43,9 @@ fun GameControls(
     input: InputState,
     ability: AbilityType,
     abilityPercent: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 1 = normal; the Control size option in Settings (0.85 small, 1.2 large). */
+    scale: Float = 1f
 ) {
     val moveColor = colorResource(R.color.control_move)
     val aimColor = colorResource(R.color.control_aim)
@@ -61,7 +63,7 @@ fun GameControls(
             .safeDrawingPadding()
             .padding(16.dp)
     ) {
-        val stick = (maxHeight * 0.42f).coerceIn(110.dp, 170.dp)
+        val stick = (maxHeight * 0.42f * scale).coerceIn(110.dp * scale, 170.dp * scale)
         val reload = stick * 0.5f
         val small = stick * 0.4f
         val gap = 14.dp

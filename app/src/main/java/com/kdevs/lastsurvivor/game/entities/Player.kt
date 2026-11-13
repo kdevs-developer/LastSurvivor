@@ -5,6 +5,7 @@ import kotlin.math.atan2
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sqrt
+import kotlin.random.Random
 
 class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
 
@@ -68,6 +69,17 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
     private var dashDirY: Float = 0f
     val adrenaline: Boolean get() = adrenalineTimer > 0f
     val dashing: Boolean get() = dashTimer > 0f
+    /** Deadeye: while >0 shots hit harder and pierce extra zombies. */
+    var deadeyeTimer: Float = 0f
+        private set
+    val deadeye: Boolean get() = deadeyeTimer > 0f
+
+    // ---- Passive skills: one-shot flags the world reads once to play an effect ----
+    private var lastStandUsed: Boolean = false
+    /** Set when Last Stand just saved the player; the world clears it after showing the effect. */
+    var lastStandTriggered: Boolean = false
+    /** Set when Nimble just made a swing miss; the world clears it after showing the effect. */
+    var dodged: Boolean = false
 
     // ---- Derived state ----
     var moving: Boolean = false
@@ -80,10 +92,25 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
     /** Returns true if the hit landed (false while invulnerable or already dead). */
     fun takeDamage(amount: Float): Boolean {
         if (!alive || invulnerable > 0f || shielded || dashing) return false
+        if (character.passive == PassiveType.NIMBLE && Random.nextFloat() < GameConfig.NIMBLE_DODGE_CHANCE) {
+            dodged = true // the swing misses: no damage, no flash
+            return false
+        }
         health = max(0f, health - amount * character.damageTakenMult)
-        invulnerable = GameConfig.PLAYER_INVULN_SECONDS
+        if (health <= 0f) tryLastStand()
+        invulnerable = max(invulnerable, GameConfig.PLAYER_INVULN_SECONDS)
         hurtFlash = GameConfig.HURT_FLASH_SECONDS
         return true
+    }
+
+    /** Survivor's Last Stand: once per run, a deadly hit (or poison tick) leaves some health and a moment of safety. */
+    private fun tryLastStand() {
+        if (character.passive != PassiveType.LAST_STAND || lastStandUsed) return
+        lastStandUsed = true
+        lastStandTriggered = true
+        health = maxHealth * GameConfig.LAST_STAND_HEALTH_FRACTION
+        invulnerable = GameConfig.LAST_STAND_INVULN_SECONDS
+        cure()
     }
 
     /** Restores health up to the maximum. */
@@ -111,6 +138,8 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
     }
 
     fun startAdrenaline(seconds: Float) { adrenalineTimer = max(adrenalineTimer, seconds) }
+
+    fun startDeadeye(seconds: Float) { deadeyeTimer = max(deadeyeTimer, seconds) }
 
     /** Restores [total] health evenly over [seconds] and cures poison. */
     fun startHealOverTime(total: Float, seconds: Float) {
@@ -140,6 +169,10 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
         health = maxHealth
         speed = BASE_SPEED * character.speedMult
         adrenalineTimer = 0f
+        deadeyeTimer = 0f
+        lastStandUsed = false
+        lastStandTriggered = false
+        dodged = false
         healTimer = 0f
         healPerSecond = 0f
         dashTimer = 0f
@@ -163,6 +196,7 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
         if (damageBoostTimer > 0f) damageBoostTimer -= dt
         if (shieldTimer > 0f) shieldTimer -= dt
         if (adrenalineTimer > 0f) adrenalineTimer -= dt
+        if (deadeyeTimer > 0f) deadeyeTimer -= dt
         if (healTimer > 0f) {
             healTimer -= dt
             heal(healPerSecond * dt)
@@ -170,7 +204,10 @@ class Player(x: Float, y: Float) : Entity(x, y, radius = 28f) {
         if (alive && character.regenPerSecond > 0f && !poisoned) heal(character.regenPerSecond * dt)
         if (poisonTimer > 0f) {
             poisonTimer -= dt
-            if (!shielded) health = max(0f, health - poisonDps * dt)
+            if (!shielded) {
+                health = max(0f, health - poisonDps * dt)
+                if (health <= 0f) tryLastStand()
+            }
             if (poisonTimer <= 0f) poisonDps = 0f
         }
 

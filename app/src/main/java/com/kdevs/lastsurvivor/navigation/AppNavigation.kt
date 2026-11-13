@@ -1,6 +1,12 @@
 package com.kdevs.lastsurvivor.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.Lifecycle
+import androidx.compose.ui.platform.LocalContext
+import androidx.navigation.compose.currentBackStackEntryAsState
+import com.kdevs.lastsurvivor.game.audio.MusicManager
+import com.kdevs.lastsurvivor.game.audio.MusicTrack
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,22 +40,40 @@ object Routes {
 @Composable
 fun AppNavigation() {
     val nav = rememberNavController()
-    val back: () -> Unit = { nav.popBackStack() }
+    // Going back is ignored unless this screen is fully on screen and there is a screen below it. Without
+    // the check a quick second tap (or a second Back press) pops again while the first pop is still
+    // animating, which removes the main menu too and leaves an empty grey NavHost.
+    val back: () -> Unit = {
+        val entry = nav.currentBackStackEntry
+        if (entry != null && entry.lifecycle.currentState == Lifecycle.State.RESUMED && nav.previousBackStackEntry != null) {
+            nav.popBackStack()
+        }
+    }
+    // launchSingleTop: a double tap on a menu button opens the screen once, not twice.
+    val go: (String) -> Unit = { route -> nav.navigate(route) { launchSingleTop = true } }
+
+    // Menu music on every screen except the game, where GameScreen plays the track of the area being played.
+    // Asking for the track that is already playing does nothing, so moving between menus does not restart it.
+    val context = LocalContext.current
+    val route = nav.currentBackStackEntryAsState().value?.destination?.route
+    LaunchedEffect(route) {
+        if (route != null && route != Routes.GAME) MusicManager.get(context).play(MusicTrack.MENU)
+    }
 
     NavHost(navController = nav, startDestination = Routes.MENU) {
         composable(Routes.MENU) {
             MainMenuScreen(
-                onPlay = { nav.navigate(Routes.MODE) },
-                onContinue = { nav.navigate(Routes.game(RunSetup.DEFAULT, continueRun = true)) },
-                onUpgrades = { nav.navigate(Routes.UPGRADES) },
-                onCharacter = { nav.navigate(Routes.CHARACTER) },
-                onSettings = { nav.navigate(Routes.SETTINGS) }
+                onPlay = { go(Routes.MODE) },
+                onContinue = { go(Routes.game(RunSetup.DEFAULT, continueRun = true)) },
+                onUpgrades = { go(Routes.UPGRADES) },
+                onCharacter = { go(Routes.CHARACTER) },
+                onSettings = { go(Routes.SETTINGS) }
             )
         }
         composable(Routes.MODE) {
             ModeSelectScreen(
                 onBack = back,
-                onStart = { setup -> nav.navigate(Routes.game(setup, continueRun = false)) }
+                onStart = { setup -> go(Routes.game(setup, continueRun = false)) }
             )
         }
         composable(

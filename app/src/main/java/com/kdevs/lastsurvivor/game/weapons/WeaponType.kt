@@ -20,10 +20,20 @@ enum class WeaponType(
 ) {
     PISTOL(price = 0, upgradeBaseCost = 30, damage = 20f, fireInterval = 0.22f, magazine = 12, reloadSeconds = 1.1f,
         bulletSpeed = 1500f, range = 900f, pellets = 1, spreadDegrees = 0f, pierce = 1, muzzleOffset = 36f),
+    REVOLVER(price = 180, upgradeBaseCost = 45, damage = 55f, fireInterval = 0.55f, magazine = 6, reloadSeconds = 1.7f,
+        bulletSpeed = 1700f, range = 950f, pellets = 1, spreadDegrees = 0f, pierce = 2, muzzleOffset = 40f),
     SMG(price = 120, upgradeBaseCost = 40, damage = 11f, fireInterval = 0.09f, magazine = 30, reloadSeconds = 1.5f,
         bulletSpeed = 1600f, range = 800f, pellets = 1, spreadDegrees = 5f, pierce = 1, muzzleOffset = 42f),
     SHOTGUN(price = 250, upgradeBaseCost = 50, damage = 12f, fireInterval = 0.8f, magazine = 6, reloadSeconds = 1.8f,
         bulletSpeed = 1300f, range = 450f, pellets = 6, spreadDegrees = 26f, pierce = 1, muzzleOffset = 52f),
     RIFLE(price = 400, upgradeBaseCost = 60, damage = 38f, fireInterval = 0.35f, magazine = 20, reloadSeconds = 1.8f,
-        bulletSpeed = 2000f, range = 1200f, pellets = 1, spreadDegrees = 0f, pierce = 3, muzzleOffset = 52f)
+        bulletSpeed = 2000f, range = 1200f, pellets = 1, spreadDegrees = 0f, pierce = 3, muzzleOffset = 52f),
+    ASSAULT(price = 550, upgradeBaseCost = 70, damage = 22f, fireInterval = 0.12f, magazine = 30, reloadSeconds = 1.7f,
+        bulletSpeed = 1800f, range = 1000f, pellets = 1, spreadDegrees = 3f, pierce = 2, muzzleOffset = 54f),
+    AUTO_SHOTGUN(price = 700, upgradeBaseCost = 80, damage = 10f, fireInterval = 0.4f, magazine = 10, reloadSeconds = 2.2f,
+        bulletSpeed = 1300f, range = 420f, pellets = 5, spreadDegrees = 22f, pierce = 1, muzzleOffset = 54f),
+    SNIPER(price = 900, upgradeBaseCost = 100, damage = 120f, fireInterval = 1.1f, magazine = 5, reloadSeconds = 2.2f,
+        bulletSpeed = 2600f, range = 1800f, pellets = 1, spreadDegrees = 0f, pierce = 5, muzzleOffset = 60f),
+    MINIGUN(price = 1200, upgradeBaseCost = 120, damage = 9f, fireInterval = 0.055f, magazine = 80, reloadSeconds = 3.0f,
+        bulletSpeed = 1700f, range = 750f, pellets = 1, spreadDegrees = 8f, pierce = 1, muzzleOffset = 50f)
 }

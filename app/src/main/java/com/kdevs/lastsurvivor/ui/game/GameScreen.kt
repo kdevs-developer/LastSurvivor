@@ -54,6 +54,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.game.engine.Campaign
+import com.kdevs.lastsurvivor.game.audio.MusicManager
+import com.kdevs.lastsurvivor.game.audio.MusicTrack
 import com.kdevs.lastsurvivor.game.engine.GameSurfaceView
 import com.kdevs.lastsurvivor.game.engine.RunSetup
 import com.kdevs.lastsurvivor.game.engine.WavePhase
@@ -94,6 +96,9 @@ fun GameScreen(
         viewModel.beginRun(continued = saved != null)
         if (saved != null) gameView.continueRun(saved.wave, saved.health, saved.grenades)
     }
+
+    // Every area has its own music; it changes when the level (and so the area) changes.
+    LaunchedEffect(current.area) { MusicManager.get(context).play(MusicTrack.forArea(current.area)) }
 
     // Shake, gore, damage numbers and the FPS counter follow the Settings screen.
     LaunchedEffect(settings) { gameView.applySettings(settings) }
@@ -187,7 +192,12 @@ fun GameScreen(
             )
         } else if (!paused) {
             GameHud(hud)
-            GameControls(input = gameView.input, ability = hud.ability, abilityPercent = hud.abilityPercent)
+            GameControls(
+                input = gameView.input,
+                ability = hud.ability,
+                abilityPercent = hud.abilityPercent,
+                scale = settings.controlSize.scale
+            )
             IconButton(
                 onClick = {
                     sounds.play(SoundEffect.UI_CLICK)

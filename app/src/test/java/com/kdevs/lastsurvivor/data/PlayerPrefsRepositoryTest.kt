@@ -4,6 +4,7 @@ import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.kdevs.lastsurvivor.game.engine.ControlSize
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.game.engine.RunTotals
@@ -54,6 +55,18 @@ class PlayerPrefsRepositoryTest {
         assertEquals(GameCharacter.SURVIVOR, repo.character.first())
         assertEquals(CharacterInventory(), repo.characters.first())
         assertNull(repo.checkpoint.first())
+    }
+
+    @Test fun `volume and vibration options are saved and survive a progress reset`() = runBlocking {
+        repo.updateSettings { it.copy(musicVolume = 0.3f, sfxVolume = 0.6f, vibration = false, controlSize = ControlSize.LARGE) }
+        val s = repo.settings.first()
+        assertEquals(0.3f, s.musicVolume, 0.0001f)
+        assertEquals(0.6f, s.sfxVolume, 0.0001f)
+        assertEquals(false, s.vibration)
+        assertEquals(ControlSize.LARGE, s.controlSize)
+
+        repo.resetProgress()
+        assertEquals(s, repo.settings.first())
     }
 
     @Test fun `banking a run adds coins, stats and the best wave in one go`() = runBlocking {

@@ -31,11 +31,34 @@ class SoundManager private constructor(context: Context) : GameAudio {
         /** Explicit R.raw references (not getIdentifier) so the resource shrinker keeps the files. */
         private fun rawId(effect: SoundEffect): Int = when (effect) {
             SoundEffect.SHOT_PISTOL -> R.raw.sfx_shot_pistol
+            SoundEffect.SHOT_REVOLVER -> R.raw.sfx_shot_revolver
             SoundEffect.SHOT_SMG -> R.raw.sfx_shot_smg
+            SoundEffect.SHOT_ASSAULT -> R.raw.sfx_shot_assault
             SoundEffect.SHOT_SHOTGUN -> R.raw.sfx_shot_shotgun
             SoundEffect.SHOT_RIFLE -> R.raw.sfx_shot_rifle
-            SoundEffect.RELOAD_START -> R.raw.sfx_reload_start
-            SoundEffect.RELOAD_DONE -> R.raw.sfx_reload_done
+            SoundEffect.SHOT_SNIPER -> R.raw.sfx_shot_sniper
+            SoundEffect.SHOT_MINIGUN -> R.raw.sfx_shot_minigun
+            SoundEffect.RELOAD_PISTOL_A -> R.raw.sfx_reload_pistol_a
+            SoundEffect.RELOAD_PISTOL_B -> R.raw.sfx_reload_pistol_b
+            SoundEffect.RELOAD_PISTOL_C -> R.raw.sfx_reload_pistol_c
+            SoundEffect.RELOAD_REVOLVER_A -> R.raw.sfx_reload_revolver_a
+            SoundEffect.RELOAD_REVOLVER_B -> R.raw.sfx_reload_revolver_b
+            SoundEffect.RELOAD_REVOLVER_C -> R.raw.sfx_reload_revolver_c
+            SoundEffect.RELOAD_SMG_A -> R.raw.sfx_reload_smg_a
+            SoundEffect.RELOAD_SMG_B -> R.raw.sfx_reload_smg_b
+            SoundEffect.RELOAD_SMG_C -> R.raw.sfx_reload_smg_c
+            SoundEffect.RELOAD_SHOTGUN_A -> R.raw.sfx_reload_shotgun_a
+            SoundEffect.RELOAD_SHOTGUN_B -> R.raw.sfx_reload_shotgun_b
+            SoundEffect.RELOAD_SHOTGUN_C -> R.raw.sfx_reload_shotgun_c
+            SoundEffect.RELOAD_RIFLE_A -> R.raw.sfx_reload_rifle_a
+            SoundEffect.RELOAD_RIFLE_B -> R.raw.sfx_reload_rifle_b
+            SoundEffect.RELOAD_RIFLE_C -> R.raw.sfx_reload_rifle_c
+            SoundEffect.RELOAD_SNIPER_A -> R.raw.sfx_reload_sniper_a
+            SoundEffect.RELOAD_SNIPER_B -> R.raw.sfx_reload_sniper_b
+            SoundEffect.RELOAD_SNIPER_C -> R.raw.sfx_reload_sniper_c
+            SoundEffect.RELOAD_MINIGUN_A -> R.raw.sfx_reload_minigun_a
+            SoundEffect.RELOAD_MINIGUN_B -> R.raw.sfx_reload_minigun_b
+            SoundEffect.RELOAD_MINIGUN_C -> R.raw.sfx_reload_minigun_c
             SoundEffect.HIT_FLESH -> R.raw.sfx_hit_flesh
             SoundEffect.ZOMBIE_DEATH -> R.raw.sfx_zombie_death
             SoundEffect.ZOMBIE_GROAN_1 -> R.raw.sfx_zombie_groan_1
@@ -56,6 +79,10 @@ class SoundManager private constructor(context: Context) : GameAudio {
             SoundEffect.BOSS_SUMMON -> R.raw.sfx_boss_summon
             SoundEffect.BOSS_DEATH -> R.raw.sfx_boss_death
             SoundEffect.WAVE_START -> R.raw.sfx_wave_start
+            SoundEffect.WAVE_START_2 -> R.raw.sfx_wave_start_2
+            SoundEffect.WAVE_START_3 -> R.raw.sfx_wave_start_3
+            SoundEffect.GAME_START -> R.raw.sfx_game_start
+            SoundEffect.THUNDER -> R.raw.sfx_thunder
             SoundEffect.WAVE_CLEAR -> R.raw.sfx_wave_clear
             SoundEffect.GAME_OVER -> R.raw.sfx_game_over
             SoundEffect.UI_CLICK -> R.raw.sfx_ui_click
@@ -80,6 +107,16 @@ class SoundManager private constructor(context: Context) : GameAudio {
     /** Master switch (the Sound toggle in the menu and pause screen). */
     @Volatile var enabled: Boolean = true
 
+    /** Effects volume from Settings (0..1), on top of every effect's own loudness. */
+    @Volatile var volume: Float = 1f
+
+    private val haptics = Haptics(context)
+
+    /** The Vibration option in Settings. */
+    var vibration: Boolean
+        get() = haptics.enabled
+        set(value) { haptics.enabled = value }
+
     init {
         for (effect in SoundEffect.entries) {
             soundIds[effect.ordinal] = pool.load(context, rawId(effect), 1)
@@ -87,12 +124,13 @@ class SoundManager private constructor(context: Context) : GameAudio {
     }
 
     override fun play(effect: SoundEffect, volume: Float, pan: Float, pitch: Float) {
+        haptics.onEffect(effect) // buzzes even when the sound is muted
         if (!enabled) return
         val i = effect.ordinal
         val now = SystemClock.uptimeMillis()
         if (now - lastPlayedMs[i] < effect.minIntervalMs) return
 
-        val loudness = (volume * effect.volume * GameConfig.SFX_MASTER_VOLUME).coerceIn(0f, 1f)
+        val loudness = (volume * this.volume * effect.volume * GameConfig.SFX_MASTER_VOLUME).coerceIn(0f, 1f)
         if (loudness < GameConfig.SFX_MIN_AUDIBLE) return
         lastPlayedMs[i] = now
 

@@ -57,7 +57,6 @@ class GameColors(context: Context) {
     val playerBody = c(R.color.player_body)
     val playerSkin = c(R.color.player_skin)
     val playerHair = c(R.color.player_hair)
-    val aimLaser = c(R.color.player_aim_laser)
     val muzzleFlash = c(R.color.player_muzzle_flash)
 
     // zombies, indexed by ZombieType.ordinal: WALKER, RUNNER, TANK, TOXIC, BRUTE, MOTHER
@@ -211,6 +210,10 @@ class GameColors(context: Context) {
         GameCharacter.MEDIC -> SkinPalette(c(R.color.char_medic_body), c(R.color.char_medic_arm), c(R.color.char_medic_pack), c(R.color.char_medic_hair))
         GameCharacter.ENGINEER -> SkinPalette(c(R.color.char_engineer_body), c(R.color.char_engineer_arm), c(R.color.char_engineer_pack), c(R.color.char_engineer_hair))
         GameCharacter.COMMANDO -> SkinPalette(c(R.color.char_commando_body), c(R.color.char_commando_arm), c(R.color.char_commando_pack), c(R.color.char_commando_hair))
+        GameCharacter.SCAVENGER -> SkinPalette(c(R.color.char_scavenger_body), c(R.color.char_scavenger_arm), c(R.color.char_scavenger_pack), c(R.color.char_scavenger_hair))
+        GameCharacter.MARKSMAN -> SkinPalette(c(R.color.char_marksman_body), c(R.color.char_marksman_arm), c(R.color.char_marksman_pack), c(R.color.char_marksman_hair))
+        GameCharacter.CRYO -> SkinPalette(c(R.color.char_cryo_body), c(R.color.char_cryo_arm), c(R.color.char_cryo_pack), c(R.color.char_cryo_hair))
+        GameCharacter.DEMOLITIONIST -> SkinPalette(c(R.color.char_demolitionist_body), c(R.color.char_demolitionist_arm), c(R.color.char_demolitionist_pack), c(R.color.char_demolitionist_hair))
     }
 
     // shooting

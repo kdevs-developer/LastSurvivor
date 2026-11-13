@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,6 +32,8 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -42,7 +46,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -53,24 +59,29 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kdevs.lastsurvivor.R
+import com.kdevs.lastsurvivor.game.audio.MusicManager
 import com.kdevs.lastsurvivor.game.audio.SoundEffect
 import com.kdevs.lastsurvivor.game.audio.SoundManager
+import com.kdevs.lastsurvivor.game.engine.ControlSize
 import com.kdevs.lastsurvivor.game.engine.GameSettings
 import com.kdevs.lastsurvivor.game.engine.GoreLevel
 import com.kdevs.lastsurvivor.ui.rememberSoundManager
+import kotlin.math.roundToInt
 
 /** Content never stretches wider than this, so tablets and TVs get a centred, readable layout. */
 private val MaxContentWidth: Dp = 1000.dp
 
-/** From this width up the two option panels sit side by side; narrower screens stack them. */
-private val TwoPanelWidth: Dp = 600.dp
+/** From this width up the three option panels (Audio, Feel, Display) sit side by side; narrower screens stack them. */
+private val ThreePanelWidth: Dp = 560.dp
 
 private typealias SettingsUpdate = ((GameSettings) -> GameSettings) -> Unit
 
 /**
  * Options saved in DataStore. Every change applies at once and is picked up by the next run.
- * Two grouped panels (Feel, Display) side by side on wide screens or stacked on narrow ones, then a
- * danger strip for Reset progress. The page is fixed to the screen (no scrolling); panels share the available height.
+ * Three grouped panels side by side on wide screens or stacked on narrow ones (Audio: sound switch, music and
+ * effects volume; Feel: screen shake, damage numbers, vibration; Display: gore, FPS), then a danger strip for
+ * Reset progress. Everything fits one screen; the panels share the available height and only scroll inside
+ * themselves on a screen too small for their content.
  */
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -86,7 +97,7 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = viewModel(
             .background(colorResource(R.color.settings_background))
             .safeDrawingPadding()
     ) {
-        val twoPanels = maxWidth >= TwoPanelWidth
+        val sidePanels = maxWidth >= ThreePanelWidth
         val pad = if (maxWidth < 400.dp || maxHeight < 400.dp) 10.dp else 16.dp
 
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -99,15 +110,17 @@ fun SettingsScreen(onBack: () -> Unit, viewModel: SettingsViewModel = viewModel(
             ) {
                 Header(onBack = { sounds.play(SoundEffect.UI_CLICK); onBack() })
 
-                if (twoPanels) {
+                if (sidePanels) {
                     Row(
                         modifier = Modifier.fillMaxWidth().weight(1f),
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
+                        AudioPanel(settings, sounds, update, Modifier.weight(1f).fillMaxHeight())
                         FeelPanel(settings, sounds, update, Modifier.weight(1f).fillMaxHeight())
                         DisplayPanel(settings, sounds, update, Modifier.weight(1f).fillMaxHeight())
                     }
                 } else {
+                    AudioPanel(settings, sounds, update, Modifier.fillMaxWidth().weight(1f))
                     FeelPanel(settings, sounds, update, Modifier.fillMaxWidth().weight(1f))
                     DisplayPanel(settings, sounds, update, Modifier.fillMaxWidth().weight(1f))
                 }
@@ -189,8 +202,9 @@ private fun Header(onBack: () -> Unit) {
 // ---------------------------------------------------------------------------------------------
 
 @Composable
-private fun FeelPanel(settings: GameSettings, sounds: SoundManager, update: SettingsUpdate, modifier: Modifier = Modifier) {
-    SettingsPanel(R.string.settings_group_feel, modifier) {
+private fun AudioPanel(settings: GameSettings, sounds: SoundManager, update: SettingsUpdate, modifier: Modifier = Modifier) {
+    val music = MusicManager.get(LocalContext.current)
+    SettingsPanel(R.string.settings_group_audio, modifier) {
         ToggleRow(R.string.settings_sound, null, settings.soundEnabled, divider = true) { on ->
             // the click is heard when turning sound on, not when turning it off
             if (on) {
@@ -199,13 +213,42 @@ private fun FeelPanel(settings: GameSettings, sounds: SoundManager, update: Sett
             }
             update { it.copy(soundEnabled = on) }
         }
+        VolumeRow(
+            titleRes = R.string.settings_music_volume,
+            value = settings.musicVolume,
+            enabled = settings.soundEnabled,
+            divider = true,
+            onLive = { music.setVolume(it) }, // you hear the music change while dragging
+            onCommit = { v -> update { it.copy(musicVolume = v) } }
+        )
+        VolumeRow(
+            titleRes = R.string.settings_sfx_volume,
+            value = settings.sfxVolume,
+            enabled = settings.soundEnabled,
+            divider = false,
+            onLive = { sounds.volume = it },
+            onCommit = { v ->
+                update { it.copy(sfxVolume = v) }
+                sounds.play(SoundEffect.UI_CLICK) // a sample at the new level
+            }
+        )
+    }
+}
+
+@Composable
+private fun FeelPanel(settings: GameSettings, sounds: SoundManager, update: SettingsUpdate, modifier: Modifier = Modifier) {
+    SettingsPanel(R.string.settings_group_feel, modifier) {
         ToggleRow(R.string.settings_screen_shake, R.string.settings_screen_shake_desc, settings.screenShake, divider = true) { on ->
             sounds.play(SoundEffect.UI_CLICK)
             update { it.copy(screenShake = on) }
         }
-        ToggleRow(R.string.settings_damage_numbers, R.string.settings_damage_numbers_desc, settings.damageNumbers, divider = false) { on ->
+        ToggleRow(R.string.settings_damage_numbers, R.string.settings_damage_numbers_desc, settings.damageNumbers, divider = true) { on ->
             sounds.play(SoundEffect.UI_CLICK)
             update { it.copy(damageNumbers = on) }
+        }
+        ToggleRow(R.string.settings_vibration, R.string.settings_vibration_desc, settings.vibration, divider = false) { on ->
+            sounds.play(SoundEffect.UI_CLICK)
+            update { it.copy(vibration = on) }
         }
     }
 }
@@ -213,9 +256,13 @@ private fun FeelPanel(settings: GameSettings, sounds: SoundManager, update: Sett
 @Composable
 private fun DisplayPanel(settings: GameSettings, sounds: SoundManager, update: SettingsUpdate, modifier: Modifier = Modifier) {
     SettingsPanel(R.string.settings_group_display, modifier) {
-        GoreRow(settings.gore) { level ->
+        SegmentedRow(R.string.settings_gore, GoreLevel.entries, settings.gore, { it.labelRes() }, divider = true) { level ->
             sounds.play(SoundEffect.UI_CLICK)
             update { it.copy(gore = level) }
+        }
+        SegmentedRow(R.string.settings_control_size, ControlSize.entries, settings.controlSize, { it.labelRes() }, divider = true) { size ->
+            sounds.play(SoundEffect.UI_CLICK)
+            update { it.copy(controlSize = size) }
         }
         ToggleRow(R.string.settings_show_fps, R.string.settings_show_fps_desc, settings.showFps, divider = false) { on ->
             sounds.play(SoundEffect.UI_CLICK)
@@ -232,6 +279,7 @@ private fun SettingsPanel(titleRes: Int, modifier: Modifier = Modifier, content:
             .clip(shape)
             .background(colorResource(R.color.neon_panel))
             .border(1.dp, colorResource(R.color.neon_border), shape)
+            .verticalScroll(rememberScrollState()) // only moves on a screen too small for the content
             .padding(horizontal = 14.dp, vertical = 4.dp),
         verticalArrangement = Arrangement.Center
     ) {
@@ -301,17 +349,75 @@ private fun ToggleRow(
     if (divider) RowDivider()
 }
 
-/** Blood and gore: a three-way segmented control that fits any width. */
+/**
+ * A 0..100% slider. [onLive] runs while dragging (so the change is heard at once, nothing is saved yet);
+ * [onCommit] runs once when the finger lifts and is where the value is saved.
+ */
 @Composable
-private fun GoreRow(selected: GoreLevel, onSelect: (GoreLevel) -> Unit) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp)) {
+private fun VolumeRow(
+    titleRes: Int,
+    value: Float,
+    enabled: Boolean,
+    divider: Boolean,
+    onLive: (Float) -> Unit,
+    onCommit: (Float) -> Unit
+) {
+    var local by remember(value) { mutableStateOf(value) }
+    Column(modifier = Modifier.fillMaxWidth().alpha(if (enabled) 1f else 0.45f).padding(top = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                stringResource(titleRes),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = colorResource(R.color.neon_title)
+            )
+            Text(
+                "${(local * 100f).roundToInt()}%",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = colorResource(R.color.neon_green)
+            )
+        }
+        Slider(
+            value = local,
+            onValueChange = { local = it; onLive(it) },
+            onValueChangeFinished = { onCommit(local) },
+            enabled = enabled,
+            colors = SliderDefaults.colors(
+                thumbColor = colorResource(R.color.neon_green),
+                activeTrackColor = colorResource(R.color.neon_green),
+                inactiveTrackColor = colorResource(R.color.settings_switch_off_track),
+                disabledThumbColor = colorResource(R.color.neon_label),
+                disabledActiveTrackColor = colorResource(R.color.neon_label),
+                disabledInactiveTrackColor = colorResource(R.color.settings_switch_off_track)
+            )
+        )
+    }
+    if (divider) RowDivider()
+}
+
+/** A compact title with a segmented control under it (Gore, Control size). Fits any width. */
+@Composable
+private fun <T> SegmentedRow(
+    titleRes: Int,
+    options: List<T>,
+    selected: T,
+    label: (T) -> Int,
+    divider: Boolean,
+    onSelect: (T) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Text(
-            stringResource(R.string.settings_gore),
-            style = MaterialTheme.typography.bodyLarge,
+            stringResource(titleRes),
+            style = MaterialTheme.typography.bodyMedium,
             fontWeight = FontWeight.Medium,
             color = colorResource(R.color.neon_title)
         )
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(4.dp))
         val shape = RoundedCornerShape(8.dp)
         Row(
             modifier = Modifier
@@ -319,21 +425,21 @@ private fun GoreRow(selected: GoreLevel, onSelect: (GoreLevel) -> Unit) {
                 .clip(shape)
                 .background(colorResource(R.color.settings_background))
                 .border(1.dp, colorResource(R.color.neon_border), shape)
-                .padding(3.dp)
+                .padding(2.dp)
         ) {
-            for (level in GoreLevel.entries) {
-                val isSelected = level == selected
+            for (option in options) {
+                val isSelected = option == selected
                 Box(
                     modifier = Modifier
                         .weight(1f)
-                        .heightIn(min = 40.dp)
+                        .heightIn(min = 34.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(if (isSelected) colorResource(R.color.neon_green) else colorResource(R.color.transparent))
-                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(level) }),
+                        .selectable(selected = isSelected, role = Role.RadioButton, onClick = { onSelect(option) }),
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        stringResource(level.labelRes()),
+                        stringResource(label(option)),
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         color = colorResource(if (isSelected) R.color.settings_on_accent else R.color.neon_label),
@@ -343,7 +449,7 @@ private fun GoreRow(selected: GoreLevel, onSelect: (GoreLevel) -> Unit) {
             }
         }
     }
-    RowDivider()
+    if (divider) RowDivider()
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -390,4 +496,10 @@ private fun GoreLevel.labelRes(): Int = when (this) {
     GoreLevel.OFF -> R.string.settings_gore_off
     GoreLevel.LOW -> R.string.settings_gore_low
     GoreLevel.NORMAL -> R.string.settings_gore_normal
+}
+
+private fun ControlSize.labelRes(): Int = when (this) {
+    ControlSize.SMALL -> R.string.settings_control_small
+    ControlSize.NORMAL -> R.string.settings_control_normal
+    ControlSize.LARGE -> R.string.settings_control_large
 }

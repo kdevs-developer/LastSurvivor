@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Module: the little top-down scenes drawn on the mode select screen (ui/mode/AreaScenery). -->
+<resources>
+    <color name="scenery_road">#66000000</color>
+    <color name="scenery_lane">#B3E0B72A</color>
+    <color name="scenery_scrim">#66000000</color>
+    <color name="scenery_moon">#FFE8EDF5</color>
+    <color name="scenery_moon_glow">#33C9D6F0</color>
+    <color name="scenery_night">#99080612</color>
+    <color name="scenery_fog">#22CFD8DC</color>
+</resources>

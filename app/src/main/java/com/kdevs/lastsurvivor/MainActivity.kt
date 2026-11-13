@@ -20,6 +20,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import com.kdevs.lastsurvivor.data.PlayerPrefsRepository
+import com.kdevs.lastsurvivor.game.audio.MusicManager
 import com.kdevs.lastsurvivor.game.audio.SoundManager
 import kotlinx.coroutines.launch
 import com.kdevs.lastsurvivor.navigation.AppNavigation
@@ -37,10 +38,17 @@ class MainActivity : ComponentActivity() {
         // Load the sound effects now so the first shot is not silent, and keep the SoundManager's
         // on/off switch in step with the saved Sound setting.
         val sounds = SoundManager.get(this)
+        val music = MusicManager.get(this)
         val prefs = PlayerPrefsRepository(this)
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
-                prefs.soundEnabled.collect { sounds.enabled = it }
+                prefs.settings.collect { s ->
+                    sounds.enabled = s.soundEnabled
+                    sounds.volume = s.sfxVolume
+                    sounds.vibration = s.vibration
+                    music.setEnabled(s.soundEnabled)
+                    music.setVolume(s.musicVolume)
+                }
             }
         }
 
@@ -54,6 +62,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        MusicManager.get(this).setForeground(true)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        MusicManager.get(this).setForeground(false)
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
